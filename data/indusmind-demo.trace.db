@@ -1,0 +1,12 @@
+2026-06-22 18:53:15.734740+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "ERROR_MESSAGE CHARACTER VARYING(255)": "'AI service unavailable or processing failed: 422 Unprocessable Entity: ""{""detai... (332)"; SQL statement:
+update documents set asset_tags=?,content_type=?,document_type=?,error_message=?,original_name=?,size_bytes=?,status=?,stored_name=?,summary=?,uploaded_at=? where id=? [22001-232]
+2026-06-22 18:56:05.852680+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "ERROR_MESSAGE CHARACTER VARYING(255)": "'AI service unavailable or processing failed: 422 Unprocessable Entity: ""{""detai... (332)"; SQL statement:
+update documents set asset_tags=?,content_type=?,document_type=?,error_message=?,original_name=?,size_bytes=?,status=?,stored_name=?,summary=?,uploaded_at=? where id=? [22001-232]
+2026-06-22 18:56:41.498789+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "ERROR_MESSAGE CHARACTER VARYING(255)": "'AI service unavailable or processing failed: 422 Unprocessable Entity: ""{""detai... (332)"; SQL statement:
+update documents set asset_tags=?,content_type=?,document_type=?,error_message=?,original_name=?,size_bytes=?,status=?,stored_name=?,summary=?,uploaded_at=? where id=? [22001-232]
+2026-06-22 18:57:22.760085+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "ERROR_MESSAGE CHARACTER VARYING(255)": "'AI service unavailable or processing failed: 422 Unprocessable Entity: ""{""detai... (332)"; SQL statement:
+update documents set asset_tags=?,content_type=?,document_type=?,error_message=?,original_name=?,size_bytes=?,status=?,stored_name=?,summary=?,uploaded_at=? where id=? [22001-232]
