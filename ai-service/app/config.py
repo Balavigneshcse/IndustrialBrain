@@ -22,6 +22,8 @@ load_dotenv(ROOT / "ai-service" / ".env")
 class Settings:
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    local_llm_enabled: bool = os.getenv("LOCAL_LLM_ENABLED", "true").lower() == "true"
+    local_llm_path: str = os.getenv("LOCAL_LLM_PATH", "../model-lora-output")
     chroma_path: Path = Path(os.getenv("CHROMA_PATH", str(ROOT / "data" / "chroma"))).resolve()
     index_path: Path = Path(os.getenv("INDEX_PATH", str(ROOT / "data" / "index" / "index.json"))).resolve()
     tesseract_cmd: str = os.getenv("TESSERACT_CMD", "")

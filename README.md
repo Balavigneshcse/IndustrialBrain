@@ -11,8 +11,9 @@ IndusMind AI converts fragmented maintenance records, inspection reports, OEM gu
 - Evidence-first RAG with source document, page, excerpt, relevance, and confidence
 - Asset 360° view connecting failures, measurements, maintenance actions, and dates
 - RCA support that separates observations, probable contributors, investigation steps, and prevention
-- Gemini generation when an API key is available
-- Fully usable offline evidence-summary fallback when it is not
+- Fully integrated 4-bit local inference using a fine-tuned LLaMA-3 LoRA model
+- Gemini generation when an API key is available (optional cloud fallback)
+- Fully usable offline evidence-summary fallback when no models are available
 - JWT authentication with Admin and Engineer roles
 - PostgreSQL production profile plus an H2 zero-setup demonstration profile
 - Embedded persistent ChromaDB; no separate vector server

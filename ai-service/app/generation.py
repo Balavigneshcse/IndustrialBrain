@@ -4,14 +4,38 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from .config import settings
+from .local_llm import local_llm_instance
 
 
 def generate_answer(question: str, evidence: list[dict]) -> tuple[str, str]:
-    if settings.gemini_api_key:
+    if settings.local_llm_enabled:
+        local_llm_instance.load_model(settings.local_llm_path)
+        if local_llm_instance.is_loaded:
+            answer = _local_llm(question, evidence)
+            if answer:
+                return answer, "local-model"
+    elif settings.gemini_api_key:
         answer = _gemini(question, evidence)
         if answer:
             return answer, "gemini"
     return _offline_answer(question, evidence), "offline-evidence"
+
+def _local_llm(question: str, evidence: list[dict]) -> str:
+    context = "\n\n".join(
+        f"[Source {index}: {item['metadata']['source']}, page {item['metadata']['page']}]\n{item['text']}"
+        for index, item in enumerate(evidence, start=1)
+    )
+    prompt = f"""You are an industrial knowledge copilot. Answer only from the supplied evidence.
+
+### Question:
+{question}
+
+### Evidence:
+{context}
+
+### Answer:
+"""
+    return local_llm_instance.generate(prompt)
 
 
 def _gemini(question: str, evidence: list[dict]) -> str:

@@ -19,6 +19,9 @@ ai-service/.venv/
 **/__pycache__/
 *.py[cod]
 .pytest_cache/
+ai-service/local_model/
+ai-service/training_data/processed_dataset/
+model-lora-output/checkpoint-*/
 
 # Runtime data
 data/uploads/*
