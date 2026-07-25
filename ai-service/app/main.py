@@ -95,7 +95,7 @@ def process_document_path(request: ProcessPathRequest) -> dict:
 
 @app.post("/ai/answer")
 def answer(request: QuestionRequest) -> dict:
-    evidence = store.search(request.question, request.asset_tag, 6)
+    evidence = store.search(request.question, request.asset_tag, 3)
     answer_text, mode = generate_answer(request.question, evidence)
     confidence = 0.0 if not evidence else min(
         0.94, 0.55 + len(evidence) * 0.035 + max(item["score"] for item in evidence) * 0.22

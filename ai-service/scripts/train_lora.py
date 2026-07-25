@@ -123,7 +123,7 @@ def train():
         fp16=False,
         bf16=True, # RTX 3050 supports bfloat16 natively, prevents scaler bugs
         max_grad_norm=0.3,
-        max_steps=2000, # Overnight run (approx 7 hours)
+        max_steps=3000, # Overnight run (approx 10 hours)
         warmup_steps=100,
         lr_scheduler_type="constant"
     )

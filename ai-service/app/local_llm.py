@@ -62,7 +62,7 @@ class LocalLLM:
             print(f"Failed to load local LLM: {e}")
             self.is_loaded = False
 
-    def generate(self, prompt: str, max_new_tokens: int = 700) -> str:
+    def generate(self, prompt: str, max_new_tokens: int = 150) -> str:
         if not self.is_loaded:
             return ""
             
@@ -70,8 +70,7 @@ class LocalLLM:
         outputs = self.model.generate(
             **inputs,
             max_new_tokens=max_new_tokens,
-            temperature=0.15,
-            do_sample=True,
+            do_sample=False,
             pad_token_id=self.tokenizer.eos_token_id
         )
         # Extract only the generated part

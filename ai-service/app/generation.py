@@ -25,7 +25,7 @@ def _local_llm(question: str, evidence: list[dict]) -> str:
         f"[Source {index}: {item['metadata']['source']}, page {item['metadata']['page']}]\n{item['text']}"
         for index, item in enumerate(evidence, start=1)
     )
-    prompt = f"""You are an industrial knowledge copilot. Answer only from the supplied evidence.
+    prompt = f"""You are an industrial knowledge copilot. Answer concisely in 1-2 sentences using only the supplied evidence.
 
 ### Question:
 {question}
