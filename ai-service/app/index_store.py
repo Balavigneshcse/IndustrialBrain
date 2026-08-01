@@ -50,8 +50,12 @@ class IndexStore:
         self._collection = None
         try:
             import chromadb
+            from chromadb.config import Settings
             settings.chroma_path.mkdir(parents=True, exist_ok=True)
-            self._chroma = chromadb.PersistentClient(path=str(settings.chroma_path))
+            self._chroma = chromadb.PersistentClient(
+                path=str(settings.chroma_path),
+                settings=Settings(anonymized_telemetry=False)
+            )
             self._collection = self._chroma.get_or_create_collection(
                 "industrial_knowledge", metadata={"hnsw:space": "cosine"}
             )

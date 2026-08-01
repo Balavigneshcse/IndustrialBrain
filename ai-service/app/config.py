@@ -23,10 +23,11 @@ class Settings:
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
     local_llm_enabled: bool = os.getenv("LOCAL_LLM_ENABLED", "true").lower() == "true"
-    local_llm_path: str = os.getenv("LOCAL_LLM_PATH", "../model-lora-output")
+    local_llm_path: str = os.getenv("LOCAL_LLM_PATH", str(ROOT / "model-lora-output"))
     chroma_path: Path = Path(os.getenv("CHROMA_PATH", str(ROOT / "data" / "chroma"))).resolve()
     index_path: Path = Path(os.getenv("INDEX_PATH", str(ROOT / "data" / "index" / "index.json"))).resolve()
     tesseract_cmd: str = os.getenv("TESSERACT_CMD", "")
+    allowed_origins: str = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:8080,http://localhost:8081,http://127.0.0.1:5173")
 
 
 settings = Settings()

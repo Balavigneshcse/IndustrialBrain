@@ -1,6 +1,7 @@
 package com.indusmind.config;
 
 import com.indusmind.security.JwtFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -17,6 +18,12 @@ import java.util.List;
 
 @Configuration
 public class SecurityConfig {
+    private final List<String> allowedOrigins;
+
+    public SecurityConfig(@Value("${indusmind.cors-allowed-origins:http://localhost:5173}") String allowedOrigins) {
+        this.allowedOrigins = List.of(allowedOrigins.split("\\s*,\\s*"));
+    }
+
     @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
 
     @Bean
@@ -28,6 +35,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**", "/api/health", "/error").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/documents/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/documents/**").hasRole("ADMIN")
+                        .requestMatchers("/api/audit/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/registry/assets/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/registry/assets/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/registry/assets/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
@@ -36,8 +48,8 @@ public class SecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedOrigins(allowedOrigins);
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

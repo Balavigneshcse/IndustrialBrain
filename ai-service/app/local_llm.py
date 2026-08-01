@@ -1,7 +1,12 @@
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-from peft import PeftModel
 import os
+
+try:
+    import torch
+    from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+    from peft import PeftModel
+    _TORCH_AVAILABLE = True
+except ImportError:
+    _TORCH_AVAILABLE = False
 
 class LocalLLM:
     _instance = None
@@ -19,6 +24,16 @@ class LocalLLM:
 
     def load_model(self, model_path: str):
         if self.is_loaded:
+            return
+
+        if not _TORCH_AVAILABLE:
+            print("PyTorch or transformers dependencies not installed. Local LLM will be disabled (fallback to Gemini/offline mode).")
+            self.is_loaded = False
+            return
+
+        if not torch.cuda.is_available():
+            print("CUDA GPU not detected. Local LLM requires an NVIDIA GPU for 4-bit quantization. Falling back to Gemini/offline mode.")
+            self.is_loaded = False
             return
 
         print(f"Loading local LLM from {model_path} in 4-bit mode...")

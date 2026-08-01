@@ -55,7 +55,7 @@ Then visit `http://localhost:5173`.
 ## Ports
 
 - React: `5173`
-- Spring Boot: `8080`
+- Spring Boot: `8081`
 - FastAPI: `8000`
 - PostgreSQL: `5432`
 

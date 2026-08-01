@@ -20,7 +20,18 @@ public class KnowledgeController {
 
     @GetMapping("/health")
     public Map<String, Object> health() {
-        return Map.of("status", "UP", "service", "spring-api", "aiService", ai.healthy() ? "UP" : "DOWN");
+        boolean aiOnline = ai.healthy();
+        List<Object> supportedFormats = List.of();
+        if (aiOnline) {
+            try {
+                Object formats = ai.aiHealth().get("supportedFormats");
+                if (formats instanceof List<?> list) supportedFormats = new ArrayList<>(list);
+            } catch (Exception ignored) {
+                // Health is still UP even if this best-effort enrichment fails.
+            }
+        }
+        return Map.of("status", "UP", "service", "spring-api", "aiService", aiOnline ? "UP" : "DOWN",
+                "supportedFormats", supportedFormats);
     }
 
     @GetMapping("/dashboard")
@@ -45,18 +56,48 @@ public class KnowledgeController {
         if (request.question() == null || request.question().isBlank())
             return ResponseEntity.badRequest().body(Map.of("message", "Question is required"));
         try {
-            Map<String, Object> result = ai.ask(request.question(), request.assetTag());
+            List<Map<String, String>> history = request.history() == null ? List.of() :
+                    request.history().stream()
+                            .map(turn -> Map.of(
+                                    "question", Objects.requireNonNullElse(turn.question(), ""),
+                                    "answer", Objects.requireNonNullElse(turn.answer(), "")))
+                            .toList();
+            Map<String, Object> result = ai.ask(request.question(), request.assetTag(), request.desiredFormat(), history);
             QueryLog log = new QueryLog();
             log.setQuestion(request.question());
             log.setAnswer(String.valueOf(result.getOrDefault("answer", "")));
             log.setMode(String.valueOf(result.getOrDefault("mode", "offline")));
+            log.setAssetTag(request.assetTag());
             Object confidence = result.getOrDefault("confidence", 0.0);
             log.setConfidence(confidence instanceof Number n ? n.doubleValue() : 0.0);
-            queries.save(log);
-            return ResponseEntity.ok(result);
+            log = queries.save(log);
+            Map<String, Object> response = new LinkedHashMap<>(result);
+            response.put("queryId", log.getId());
+            return ResponseEntity.ok(response);
         } catch (Exception ex) {
             return ResponseEntity.status(503).body(Map.of("message", "AI service is unavailable", "detail", ex.getMessage()));
         }
+    }
+
+    @PatchMapping("/chat/{id}/feedback")
+    public ResponseEntity<?> feedback(@PathVariable Long id, @RequestBody FeedbackRequest request) {
+        return queries.findById(id).<ResponseEntity<?>>map(log -> {
+            log.setFeedback(request.feedback());
+            queries.save(log);
+            // Map.of() throws NullPointerException on a null value, and
+            // "clear my feedback" legitimately sends feedback: null - so a
+            // plain mutable map is used here instead.
+            Map<String, Object> body = new HashMap<>();
+            body.put("id", id);
+            body.put("feedback", request.feedback());
+            return ResponseEntity.ok(body);
+        }).orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/analytics")
+    public ResponseEntity<?> analytics() {
+        try { return ResponseEntity.ok(ai.analytics()); }
+        catch (Exception ex) { return ResponseEntity.status(503).body(Map.of("message", "AI service unavailable")); }
     }
 
     @GetMapping("/assets/{tag}")
@@ -71,6 +112,28 @@ public class KnowledgeController {
         catch (Exception ex) { return ResponseEntity.status(503).body(Map.of("message", "AI service unavailable")); }
     }
 
-    public record ChatRequest(String question, String assetTag) {}
+    @GetMapping("/assets/{tag}/rca/export")
+    public ResponseEntity<byte[]> exportRca(@PathVariable String tag,
+                                             @RequestParam(defaultValue = "docx") String format) {
+        try {
+            return ai.rcaExport(tag, format);
+        } catch (org.springframework.web.client.RestClientResponseException ex) {
+            return ResponseEntity.status(ex.getStatusCode())
+                    .contentType(org.springframework.http.MediaType.TEXT_PLAIN)
+                    .body(ex.getMessage().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        } catch (Exception ex) {
+            return ResponseEntity.status(503)
+                    .contentType(org.springframework.http.MediaType.TEXT_PLAIN)
+                    .body("AI service unavailable".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+    }
+
+    public record ChatRequest(String question, String assetTag, String desiredFormat, List<ConversationTurn> history) {
+        public String desiredFormat() { return desiredFormat == null || desiredFormat.isBlank() ? "quick_answer" : desiredFormat; }
+    }
+
+    public record ConversationTurn(String question, String answer) {}
+
+    public record FeedbackRequest(Integer feedback) {}
 }
 

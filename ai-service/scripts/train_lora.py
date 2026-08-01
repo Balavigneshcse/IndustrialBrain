@@ -15,8 +15,8 @@ import os
 local_model_path = os.path.join(os.path.dirname(__file__), "..", "local_model")
 MODEL_NAME = local_model_path if os.path.exists(local_model_path) and os.listdir(local_model_path) else "unsloth/llama-3-8b-Instruct-bnb-4bit"
 # Alternatively, you can use "unsloth/llama-3-8b-Instruct-bnb-4bit" which is pre-quantized and easier to load.
-# We no longer need DATASET_PATH since we load from training_data folder
-OUTPUT_DIR = "../model-lora-output"
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+OUTPUT_DIR = os.path.join(ROOT_DIR, "model-lora-output")
 
 def train():
     print("Loading tokenizer...")
@@ -116,14 +116,15 @@ def train():
         per_device_train_batch_size=1, # Keep batch size 1 for 6GB VRAM
         gradient_accumulation_steps=4, # Accumulate to simulate larger batch size
         optim="paged_adamw_32bit",
-        save_steps=250, # Save checkpoint every ~1 hour (250 steps)
+        save_steps=100, # Save checkpoint every 100 steps
+        save_total_limit=5, # Keep 5 most recent checkpoints to save disk space
         logging_steps=10,
         learning_rate=2e-4,
         weight_decay=0.001,
         fp16=False,
         bf16=True, # RTX 3050 supports bfloat16 natively, prevents scaler bugs
         max_grad_norm=0.3,
-        max_steps=3000, # Overnight run (approx 10 hours)
+        max_steps=100000, # Run as much as possible (100,000 steps) until Ctrl+C
         warmup_steps=100,
         lr_scheduler_type="constant"
     )
@@ -145,8 +146,15 @@ def train():
         trainer.train(resume_from_checkpoint=last_checkpoint)
     except KeyboardInterrupt:
         print("\n[Ctrl+C] Training paused by user! Saving exact progress to a resumable checkpoint...")
-        trainer._save_checkpoint(trainer.model, trial=None)
-        print("Checkpoint saved successfully. You can safely resume later.")
+        try:
+            trainer._save_checkpoint(trainer.model, trial=None)
+            print(f"Resumable checkpoint saved at step {trainer.state.global_step}!")
+        except Exception as e:
+            print(f"Note: Could not save optimizer state ({e}), saving weights...")
+        print(f"Updating latest LoRA adapter weights in {OUTPUT_DIR}...")
+        trainer.model.save_pretrained(OUTPUT_DIR)
+        tokenizer.save_pretrained(OUTPUT_DIR)
+        print("Checkpoint and latest model weights saved successfully! You can safely resume training later.")
         return
     
     print(f"Saving fine-tuned LoRA adapter to {OUTPUT_DIR}...")

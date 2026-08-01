@@ -9,4 +9,15 @@ foreach ($Name in @("frontend", "backend", "ai-service")) {
         Write-Host "Stopped $Name"
     }
 }
+foreach ($Port in @(8000, 8081, 5173)) {
+    $Conns = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
+    if ($Conns) {
+        foreach ($Conn in $Conns) {
+            if ($Conn.OwningProcess -gt 0) {
+                Stop-Process -Id $Conn.OwningProcess -Force -ErrorAction SilentlyContinue
+                Write-Host "Stopped process ($($Conn.OwningProcess)) on port $Port"
+            }
+        }
+    }
+}
 

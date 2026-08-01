@@ -7,25 +7,37 @@ from .config import settings
 from .local_llm import local_llm_instance
 
 
-def generate_answer(question: str, evidence: list[dict]) -> tuple[str, str]:
+FORMAT_INSTRUCTIONS = {
+    "work_order": "Structure your answer as a maintenance work order with fields: "
+                  "Asset, Reported Problem, Recommended Action, Parts/Tools Required, "
+                  "Safety Precautions, Priority.",
+    "checklist":  "Return a numbered checklist of concrete inspection/action steps.",
+    "table":      "Return the key facts as a markdown table (Field | Value).",
+    "report":     "Write a formal RCA-style report with headed sections.",
+    "quick_answer": "Answer concisely in 1-2 sentences using only the supplied evidence."
+}
+
+
+def generate_answer(question: str, evidence: list[dict], desired_format: str = "quick_answer") -> tuple[str, str]:
     if settings.local_llm_enabled:
         local_llm_instance.load_model(settings.local_llm_path)
         if local_llm_instance.is_loaded:
-            answer = _local_llm(question, evidence)
+            answer = _local_llm(question, evidence, desired_format)
             if answer:
                 return answer, "local-model"
     elif settings.gemini_api_key:
-        answer = _gemini(question, evidence)
+        answer = _gemini(question, evidence, desired_format)
         if answer:
             return answer, "gemini"
-    return _offline_answer(question, evidence), "offline-evidence"
+    return _offline_answer(question, evidence, desired_format), "offline-evidence"
 
-def _local_llm(question: str, evidence: list[dict]) -> str:
+def _local_llm(question: str, evidence: list[dict], desired_format: str = "quick_answer") -> str:
     context = "\n\n".join(
         f"[Source {index}: {item['metadata']['source']}, page {item['metadata']['page']}]\n{item['text']}"
         for index, item in enumerate(evidence, start=1)
     )
-    prompt = f"""You are an industrial knowledge copilot. Answer concisely in 1-2 sentences using only the supplied evidence.
+    fmt = FORMAT_INSTRUCTIONS.get(desired_format, FORMAT_INSTRUCTIONS["quick_answer"])
+    prompt = f"""You are an industrial knowledge copilot. {fmt}
 
 ### Question:
 {question}
@@ -35,17 +47,91 @@ def _local_llm(question: str, evidence: list[dict]) -> str:
 
 ### Answer:
 """
-    return local_llm_instance.generate(prompt)
+    base_answer = local_llm_instance.generate(prompt)
+    if not base_answer:
+        return ""
+    if desired_format == "quick_answer":
+        return base_answer
+    return _format_structured(base_answer, evidence, desired_format)
 
 
-def _gemini(question: str, evidence: list[dict]) -> str:
+def _format_structured(base_answer: str, evidence: list[dict], desired_format: str) -> str:
+    failures, actions, measurements = set(), set(), set()
+    source_ref = evidence[0]["metadata"]["source"] if evidence else "Industrial KB"
+    for item in evidence:
+        meta = item["metadata"]
+        failures.update(filter(None, meta.get("failures", "").split(",")))
+        actions.update(filter(None, meta.get("actions", "").split(",")))
+        measurements.update(filter(None, meta.get("measurements", "").split(",")))
+
+    failure_str = ", ".join(sorted(failures)) or "None explicitly flagged in metadata"
+    action_str = ", ".join(sorted(actions)) or "Refer to maintenance procedure SOP"
+    meas_str = ", ".join(sorted(measurements)[:5]) or "Standard operating baselines"
+
+    if desired_format == "table":
+        return (
+            "| Field | AI Synthesis & Extracted Evidence |\n"
+            "| --- | --- |\n"
+            f"| **AI Assessment** | {base_answer} |\n"
+            f"| **Extracted Failures** | {failure_str} |\n"
+            f"| **Recommended Actions** | {action_str} |\n"
+            f"| **Specifications** | {meas_str} |\n"
+            f"| **Primary Reference** | {source_ref} |"
+        )
+    elif desired_format == "checklist":
+        return (
+            f"### [CHECKLIST] Operational & Maintenance Verification\n\n"
+            f"1. **Verify Core Assessment**\n"
+            f"   - [ ] {base_answer}\n\n"
+            f"2. **Inspect for Failure Modes**\n"
+            f"   - [ ] Check for: {failure_str}\n\n"
+            f"3. **Execute Maintenance Steps**\n"
+            f"   - [ ] Action items: {action_str}\n\n"
+            f"4. **Validate Operating Specifications**\n"
+            f"   - [ ] Verify against: {meas_str}\n\n"
+            f"5. **Confirm Document Reference**\n"
+            f"   - [ ] Source document: {source_ref}"
+        )
+    elif desired_format == "work_order":
+        return (
+            f"### [WORK ORDER] Maintenance Task Order\n\n"
+            f"- **Priority**: `HIGH`\n"
+            f"- **Primary Reference**: `{source_ref}`\n"
+            f"- **Reported Problem / AI Synthesis**:\n"
+            f"  {base_answer}\n"
+            f"- **Identified Failure Modes**:\n"
+            f"  {failure_str}\n"
+            f"- **Recommended Corrective Actions**:\n"
+            f"  {action_str}\n"
+            f"- **Required Readings / Specs**:\n"
+            f"  {meas_str}"
+        )
+    elif desired_format == "report":
+        return (
+            f"### [REPORT] Technical Root Cause & Evidence Report\n\n"
+            f"#### 1. Executive Summary\n"
+            f"{base_answer}\n\n"
+            f"#### 2. Identified Failure Modes\n"
+            f"- {failure_str}\n\n"
+            f"#### 3. Corrective & Preventative Actions\n"
+            f"- {action_str}\n\n"
+            f"#### 4. Measurements & Operating Parameters\n"
+            f"- {meas_str}\n\n"
+            f"#### 5. Primary Source Documentation\n"
+            f"- Document: `{source_ref}`"
+        )
+    return base_answer
+
+
+def _gemini(question: str, evidence: list[dict], desired_format: str = "quick_answer") -> str:
     context = "\n\n".join(
         f"[Source {index}: {item['metadata']['source']}, page {item['metadata']['page']}]\n{item['text']}"
         for index, item in enumerate(evidence, start=1)
     )
+    fmt = FORMAT_INSTRUCTIONS.get(desired_format, FORMAT_INSTRUCTIONS["quick_answer"])
     prompt = f"""You are an industrial knowledge copilot. Answer only from the supplied evidence.
 If the evidence is insufficient, say that clearly. Do not invent measurements, causes, or dates.
-Give a concise answer followed by a short evidence-based explanation. Citations are shown separately by the UI.
+{fmt} Citations are shown separately by the UI.
 
 Question: {question}
 
@@ -68,7 +154,7 @@ Evidence:
         return ""
 
 
-def _offline_answer(question: str, evidence: list[dict]) -> str:
+def _offline_answer(question: str, evidence: list[dict], desired_format: str = "quick_answer") -> str:
     if not evidence or evidence[0]["score"] < 0.05:
         return "I could not find sufficient evidence in the indexed industrial documents to answer this question."
     failures, actions, measurements = set(), set(), set()
@@ -77,6 +163,25 @@ def _offline_answer(question: str, evidence: list[dict]) -> str:
         failures.update(filter(None, meta.get("failures", "").split(",")))
         actions.update(filter(None, meta.get("actions", "").split(",")))
         measurements.update(filter(None, meta.get("measurements", "").split(",")))
+
+    if desired_format == "table":
+        table_rows = [
+            "| Field | Extracted Evidence |",
+            "| --- | --- |",
+            f"| Failures | {', '.join(sorted(failures)) or 'None detected'} |",
+            f"| Actions | {', '.join(sorted(actions)) or 'None detected'} |",
+            f"| Measurements | {', '.join(sorted(measurements)[:5]) or 'None detected'} |",
+            f"| Top Evidence | {evidence[0]['text'][:200].strip()}... |"
+        ]
+        return "\n".join(table_rows)
+    elif desired_format == "checklist":
+        return f"1. Inspect asset for failures: {', '.join(sorted(failures)) or 'None observed'}\n2. Verify maintenance actions taken: {', '.join(sorted(actions)) or 'None recorded'}\n3. Check readings against baseline: {', '.join(sorted(measurements)[:5]) or 'N/A'}"
+    elif desired_format == "work_order":
+        return f"**Work Order**\n- **Problem**: {', '.join(sorted(failures)) or 'Reported issue'}\n- **Recommended Action**: {', '.join(sorted(actions)) or 'Inspect asset'}\n- **Priority**: High\n- **Evidence**: {evidence[0]['text'][:250].strip()}"
+    elif desired_format == "report":
+        return f"### Technical Root Cause & Evidence Report\n- **Identified Failure Modes**: {', '.join(sorted(failures)) or 'None detected'}\n- **Recommended Corrective Actions**: {', '.join(sorted(actions)) or 'Standard inspection'}\n- **Primary Evidence**: {evidence[0]['text'][:350].strip()}"
+
+
     parts = ["The indexed records indicate the following evidence:"]
     if failures:
         parts.append("Observed failure patterns include " + ", ".join(sorted(failures)) + ".")

@@ -3,6 +3,8 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 $RunDir = Join-Path $Root "data\run"
 New-Item -ItemType Directory -Force -Path $RunDir | Out-Null
+$StopScript = Join-Path $PSScriptRoot "stop-all.ps1"
+if (Test-Path $StopScript) { powershell.exe -NoProfile -ExecutionPolicy Bypass -File $StopScript | Out-Null }
 
 function Start-IndusProcess($Name, $FilePath, $Arguments, $WorkingDirectory) {
     $Info = [System.Diagnostics.ProcessStartInfo]::new()
@@ -15,28 +17,35 @@ function Start-IndusProcess($Name, $FilePath, $Arguments, $WorkingDirectory) {
         $Info.Arguments = (($Arguments | ForEach-Object { '"' + ([string]$_).Replace('"', '\"') + '"' }) -join ' ')
     }
     $Info.WorkingDirectory = $WorkingDirectory
-    $Info.UseShellExecute = $false
-    $Info.CreateNoWindow = $true
+    $Info.UseShellExecute = $true
+    $Info.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
     $Process = [System.Diagnostics.Process]::Start($Info)
     Set-Content -LiteralPath (Join-Path $RunDir "$Name.pid") -Value $Process.Id
     Write-Host "Started $Name (PID $($Process.Id))"
 }
 
 $Python = Join-Path $Root "ai-service\.venv\Scripts\python.exe"
-if (-not (Test-Path $Python)) { throw "Run scripts\setup.ps1 first." }
+if (-not (Test-Path $Python)) {
+    $SysPython = Get-Command python.exe -ErrorAction SilentlyContinue
+    if ($SysPython) { $Python = $SysPython.Source }
+    else { throw "Run scripts\setup.ps1 first." }
+}
 
 Start-IndusProcess "ai-service" $Python @("run.py") (Join-Path $Root "ai-service")
 
 $BackendArgs = @("spring-boot:run")
 if ($DemoMode) { $BackendArgs += "-Dspring-boot.run.profiles=demo" }
-$Maven = (Get-Command mvn.cmd -ErrorAction Stop).Source
+$MavenCmd = Get-Command mvn.cmd -ErrorAction SilentlyContinue
+if ($MavenCmd) { $Maven = $MavenCmd.Source }
+elseif (Test-Path "C:\apache-maven-3.9.12\apache-maven-3.9.12\bin\mvn.cmd") { $Maven = "C:\apache-maven-3.9.12\apache-maven-3.9.12\bin\mvn.cmd" }
+else { $Maven = (Get-Command mvn.cmd -ErrorAction Stop).Source }
 $Npm = (Get-Command npm.cmd -ErrorAction Stop).Source
 Start-IndusProcess "backend" $Maven $BackendArgs (Join-Path $Root "backend")
 Start-IndusProcess "frontend" $Npm @("run", "dev", "--", "--host", "127.0.0.1") (Join-Path $Root "frontend")
 
 Write-Host "Waiting for services..."
 $Healthy = $false
-for ($Attempt = 1; $Attempt -le 12; $Attempt++) {
+for ($Attempt = 1; $Attempt -le 30; $Attempt++) {
     Start-Sleep -Seconds 3
     powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "health-check.ps1")
     if ($LASTEXITCODE -eq 0) { $Healthy = $true; break }

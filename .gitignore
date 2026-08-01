@@ -30,6 +30,9 @@ data/chroma/*
 !data/chroma/.gitkeep
 data/index/*
 !data/index/.gitkeep
+data/run/
+data/*.db
+ai-service/model-lora-output/
 
 # IDE / OS
 .idea/

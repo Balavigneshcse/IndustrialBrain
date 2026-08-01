@@ -22,6 +22,7 @@ public class DocumentRecord {
     private String summary;
     @Column(length = 2000)
     private String errorMessage;
+    private String uploadedBy;
     private Instant uploadedAt = Instant.now();
 
     public Long getId() { return id; }
@@ -43,5 +44,7 @@ public class DocumentRecord {
     public void setSummary(String summary) { this.summary = summary; }
     public String getErrorMessage() { return errorMessage; }
     public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+    public String getUploadedBy() { return uploadedBy; }
+    public void setUploadedBy(String uploadedBy) { this.uploadedBy = uploadedBy; }
     public Instant getUploadedAt() { return uploadedAt; }
 }

@@ -14,6 +14,9 @@ public class QueryLog {
     private String answer;
     private String mode;
     private double confidence;
+    private String assetTag;
+    // 1 = thumbs up, -1 = thumbs down, null = no feedback given yet
+    private Integer feedback;
     private Instant createdAt = Instant.now();
 
     public Long getId() { return id; }
@@ -25,6 +28,10 @@ public class QueryLog {
     public void setMode(String mode) { this.mode = mode; }
     public double getConfidence() { return confidence; }
     public void setConfidence(double confidence) { this.confidence = confidence; }
+    public String getAssetTag() { return assetTag; }
+    public void setAssetTag(String assetTag) { this.assetTag = assetTag; }
+    public Integer getFeedback() { return feedback; }
+    public void setFeedback(Integer feedback) { this.feedback = feedback; }
     public Instant getCreatedAt() { return createdAt; }
 }
 

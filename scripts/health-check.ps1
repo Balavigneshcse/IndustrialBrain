@@ -1,6 +1,6 @@
 $Checks = @(
     @{ Name = "AI service"; Url = "http://127.0.0.1:8000/ai/health" },
-    @{ Name = "Spring API"; Url = "http://127.0.0.1:8080/api/health" },
+    @{ Name = "Spring API"; Url = "http://127.0.0.1:8081/api/health" },
     @{ Name = "React UI"; Url = "http://127.0.0.1:5173" }
 )
 $Failed = $false
