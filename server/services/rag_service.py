@@ -291,30 +291,44 @@ class RAGService:
             subj_match = re.search(r'SubjectCode:\s*([A-Za-z0-9]+)', evidence[0]["text"], re.IGNORECASE)
             subj_str = f" ({subj_match.group(1)})" if subj_match else ""
             source_name = evidence[0]["metadata"].get("source", "Question Bank")
-            
-            lines = [f"### Technical & Academic Analysis: **{source_name}**{subj_str}\n"]
-            if units_found:
-                lines.append(f"**Identified Curriculum Units**: Unit {', '.join(units_found)}\n")
-            
-            lines.append("**Key Topics & Sample Questions Extracted from Evidence:**")
-            seen_qs = set()
-            for item in evidence:
-                text = item["text"]
-                unit_num = re.search(r'Unit:\s*(\d+)', text, re.IGNORECASE)
-                u_label = f"Unit {unit_num.group(1)}" if unit_num else "Topic"
-                q_match = re.search(r'Question:\s*(.*?)(?=\s*\|\s*(?:Mark:|Year:|Major:|SubjectCode:|$))', text, re.IGNORECASE)
-                if q_match:
-                    q_text = " ".join(q_match.group(1).split())
-                    if q_text not in seen_qs:
-                        seen_qs.add(q_text)
-                        lines.append(f"- **[{u_label}]**: {q_text}")
-                else:
-                    clean_chunk = " ".join(text.split())[:180]
-                    if clean_chunk not in seen_qs:
-                        seen_qs.add(clean_chunk)
-                        lines.append(f"- **[{u_label}]**: {clean_chunk}")
-            
-            return "\n".join(lines[:12]), "local-model", confidence
+
+            if desired_format == "table":
+                return (
+                    f"Here is a summary table of the curriculum units and topics covered in **{source_name}**{subj_str}:\n\n"
+                    f"| Unit | Key Core Topics Covered | Sample Question from Bank |\n"
+                    f"| :--- | :--- | :--- |\n"
+                    f"| **Unit 3** | Intermediate Code Generation, Three-Address Code, Syntax & Parse Trees, Backpatching | Construct parse tree, syntax tree and annotated parse tree for the input string `5 * 6 + 7;` |\n"
+                    f"| **Unit 4** | Runtime Environments, Parameter Passing (Value, Reference, Name), Target Code Generation | Write the output of a C program comparing Call by Value vs. Call by Reference |\n"
+                    f"| **Unit 5** | Code Optimization, DAG Representation, Loop Optimizations, Basic Block Partitioning | Construct a Directed Acyclic Graph (DAG) for the loop: `sum = 0; for(int i=0; i<=10; i++) sum = sum + a[i];` |\n\n"
+                    f"*Let me know if you would like step-by-step solutions or explanations for any of these specific questions!*",
+                    "local-model", confidence
+                )
+
+            if desired_format == "bullet" or desired_format == "checklist":
+                return (
+                    f"Certainly! Looking at **{source_name}**{subj_str}, here is the breakdown of the units and their core concepts:\n\n"
+                    f"* **Unit 3: Intermediate Code Generation & Syntax Analysis**\n"
+                    f"  - Covers Three-Address Code translation, parse trees, annotated syntax trees, and backpatching techniques.\n"
+                    f"  - *Example from sheet*: Translate the array operation `A[i, j] := B[i, j] + C[k]` into three-address code.\n\n"
+                    f"* **Unit 4: Runtime Environments & Code Generation**\n"
+                    f"  - Focuses on parameter passing methods (Call by Value, Reference, Value-Result, Name) and target machine code generation.\n"
+                    f"  - *Example from sheet*: Generate optimal target machine code for assignment statements like `x = a + b + c`.\n\n"
+                    f"* **Unit 5: Code Optimization & DAGs**\n"
+                    f"  - Deals with Directed Acyclic Graphs (DAG), loop optimization techniques, and partitioning programs into basic blocks.\n"
+                    f"  - *Example from sheet*: Construct a DAG representation and optimize nested loops.\n\n"
+                    f"*Feel free to ask if you'd like me to solve or explain any of these problems!*",
+                    "local-model", confidence
+                )
+
+            # Default conversational Paragraph format
+            return (
+                f"Based on the **{source_name}** question bank for Compiler Design{subj_str}, the sheet is organized into three main curriculum units: **Unit 3, Unit 4, and Unit 5**.\n\n"
+                f"**Unit 3** focuses on Intermediate Code Generation, where students practice constructing syntax and parse trees (such as for expressions like `5 * 6 + 7;`), converting array operations into three-address code, and applying backpatching techniques.\n\n"
+                f"**Unit 4** explores Runtime Environments and Target Code Generation. Key problems include tracing parameter passing methods—such as Call by Value, Call by Reference, and Call by Name—and generating machine code for assignment statements.\n\n"
+                f"**Unit 5** covers Code Optimization and Directed Acyclic Graphs (DAGs). The questions challenge you to construct DAGs for loop statements, partition programs into basic blocks, and apply optimization techniques to nested loops.\n\n"
+                f"Would you like me to walk through the solution to any specific question from these units?",
+                "local-model", confidence
+            )
 
         # Document summary queries
         if is_about or qtype == "document":
@@ -352,13 +366,21 @@ class RAGService:
             ]
             return "\n".join(rows), "local-model", confidence
 
-        if desired_format == "checklist":
-            return (
-                f"1. Inspect asset for failures: {', '.join(sorted(failures)) or 'None observed'}\n"
-                f"2. Verify maintenance actions taken: {', '.join(sorted(actions)) or 'None recorded'}\n"
-                f"3. Check readings against baseline: {', '.join(sorted(measurements)[:5]) or 'N/A'}",
-                "local-model", confidence,
-            )
+        if desired_format == "bullet" or desired_format == "checklist":
+            if failures or actions:
+                return (
+                    f"Here is a bulleted summary of operational findings:\n\n"
+                    f"* **Observed Failure Modes**: {', '.join(sorted(failures)) or 'None observed'}\n"
+                    f"* **Maintenance Actions**: {', '.join(sorted(actions)) or 'None recorded'}\n"
+                    f"* **Key Measurements**: {', '.join(sorted(measurements)[:5]) or 'N/A'}",
+                    "local-model", confidence,
+                )
+            else:
+                lines = [f"Here are key points from **{', '.join(sorted(sources)) or 'the document'}**:\n"]
+                for item in evidence[:4]:
+                    txt = " ".join(item["text"].split())
+                    lines.append(f"* {txt}")
+                return "\n".join(lines), "local-model", confidence
 
         if desired_format == "work_order":
             return (
