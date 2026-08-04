@@ -151,7 +151,30 @@ class RAGService:
             if asset_tag and asset_tag.upper() not in meta.get("asset_tags", ""):
                 continue
             items.append({"text": text, "metadata": meta, "score": round(max(0, 1 - dist), 4)})
-        return items
+
+        # Check if query asks about a specific file by filename or extension
+        q_lower = question.lower()
+        if any(ext in q_lower for ext in [".xlsx", ".xls", ".pdf", ".docx", ".csv", ".pptx", ".txt", ".html", ".eml", ".md"]) or "about " in q_lower or "summarize " in q_lower:
+            try:
+                all_data = self._collection.get(include=["documents", "metadatas"])
+                file_items = []
+                for text, meta in zip(all_data.get("documents", []), all_data.get("metadatas", [])):
+                    src = meta.get("source", "").lower()
+                    if src and (src in q_lower or any(w in src for w in q_lower.replace("(", " ").replace(")", " ").split() if len(w) > 4 and w in src)):
+                        file_items.append({"text": text, "metadata": meta, "score": 0.95})
+                # Prepend matching file items and deduplicate by text
+                seen = set()
+                combined = []
+                for item in file_items + items:
+                    t = item["text"]
+                    if t not in seen:
+                        seen.add(t)
+                        combined.append(item)
+                items = combined
+            except Exception:
+                pass
+
+        return items[:limit]
 
     def search_by_source(self, name_fragment: str, limit: int = 5) -> list[dict]:
         if not self._collection:

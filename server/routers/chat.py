@@ -12,8 +12,10 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 
 class ConversationTurn(BaseModel):
-    question: str
-    answer: str
+    role: Optional[str] = None
+    content: Optional[str] = None
+    question: Optional[str] = None
+    answer: Optional[str] = None
 
 
 class ChatQueryRequest(BaseModel):
@@ -44,10 +46,13 @@ def chat_query(body: ChatQueryRequest, db: Session = Depends(get_db),
     # Build citations
     citations = [
         {
-            "source": item["metadata"].get("source", ""),
+            "docId": str(item["metadata"].get("id", "")),
+            "filename": item["metadata"].get("source", "Uploaded Document"),
+            "source": item["metadata"].get("source", "Uploaded Document"),
             "page": item["metadata"].get("page", 1),
             "documentType": item["metadata"].get("document_type", ""),
             "excerpt": item["text"][:360],
+            "textSnippet": item["text"][:360],
             "relevance": round(min(0.97, 0.5 + item["score"] * 0.45), 2),
         }
         for item in evidence
