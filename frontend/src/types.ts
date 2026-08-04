@@ -1,111 +1,77 @@
-export type HealthData = {
-  status: string
-  service: string
-  aiService: 'UP' | 'DOWN'
-  supportedFormats: string[]
+export interface Session {
+  token: string;
+  username: string;
+  displayName: string;
+  role: string;
 }
 
-export type DashboardData = {
-  documents: number
-  readyDocuments: number
-  assets: number
-  queries: number
-  assetTags: string[]
-  aiOnline: boolean
-  recentQueries: { id: number; question: string; mode: string; confidence: number; createdAt: string }[]
+export interface DocumentRecord {
+  id: string;
+  filename: string;
+  uploadDate: string;
+  status: 'processing' | 'ready' | 'failed';
+  size: number;
 }
 
-export type DocumentRecord = {
-  id: number
-  originalName: string
-  contentType: string
-  sizeBytes: number
-  status: string
-  documentType: string
-  assetTags: string
-  summary: string
-  errorMessage?: string
-  uploadedBy?: string
-  uploadedAt: string
+export interface DashboardData {
+  documents: number;
+  readyDocuments: number;
+  assets: number;
+  queries: number;
+  assetTags: string[];
+  aiOnline: boolean;
+  recentQueries: string[];
 }
 
-export type Citation = {
-  source: string
-  page: number
-  excerpt: string
-  relevance?: number
-  documentType?: string
+export interface Citation {
+  docId: string;
+  filename: string;
+  page?: number;
+  textSnippet: string;
 }
 
-export type AnswerFormat = 'quick_answer' | 'work_order' | 'checklist' | 'table' | 'report'
-export type ExportFormat = 'docx' | 'pdf' | 'csv'
+export type AnswerFormat = 'paragraph' | 'bullet' | 'table';
 
-export type ChatAnswer = {
-  answer: string
-  mode: string
-  format: AnswerFormat
-  confidence: number
-  citations: Citation[]
-  assetTag: string
-  queryId?: number
-  feedback?: 1 | -1
+export interface ChatAnswer {
+  answer: string;
+  mode: string;
+  format: string;
+  confidence: number;
+  citations: Citation[];
+  assetTag?: string;
+  queryId: string;
 }
 
-export type ConversationTurn = { question: string; answer: string }
-
-export type AssetData = {
-  tag: string
-  sources: string[]
-  failures: string[]
-  maintenanceActions: string[]
-  dates: string[]
-  measurements: string[]
-  timeline: { date: string; source: string; summary: string }[]
-  evidenceChunks: number
+export interface ConversationTurn {
+  role: 'user' | 'ai';
+  content: string;
+  citations?: Citation[];
+  id?: string;
 }
 
-export type RcaData = {
-  assetTag: string
-  observedProblem: string
-  probableCauses: string[]
-  recordedActions: string[]
-  measurements: string[]
-  eventDates: string[]
-  recommendedInvestigation: string[]
-  preventiveActions: string[]
-  confidence: number
-  disclaimer: string
-  citations: Citation[]
+export interface AssetData {
+  tag: string;
+  sources: string[];
+  failures: string[];
+  maintenanceActions: string[];
+  dates: string[];
+  measurements: Record<string, number>;
+  timeline: { date: string; event: string }[];
+  evidenceChunks: number;
 }
 
-export type AuditLogEntry = {
-  id: number
-  actor: string
-  action: string
-  targetType?: string
-  targetId?: string
-  detail?: string
-  createdAt: string
+export interface RcaData {
+  tag: string;
+  rootCause: string;
+  contributingFactors: string[];
+  recommendations: string[];
+  confidenceScore: number;
 }
 
-export type AssetRegistryEntry = {
-  id: number
-  tag: string
-  name?: string
-  location?: string
-  criticality?: string
-  manufacturer?: string
-  installDate?: string
-  notes?: string
-  createdAt: string
-  updatedAt: string
+export interface AnalyticsData {
+  totalChunks: number;
+  totalAssets: number;
+  topFailureModes: { label: string; value: number }[];
+  topActions: { label: string; value: number }[];
+  assetsRankedByRisk: { tag: string; riskScore: number; lastFailure: string }[];
 }
-
-export type AnalyticsData = {
-  totalChunks: number
-  totalAssets: number
-  topFailureModes: { failure: string; count: number }[]
-  topActions: { action: string; count: number }[]
-  assetsRankedByRisk: { assetTag: string; failureEvents: number; topFailure: string | null; documentCount: number }[]
-}
-

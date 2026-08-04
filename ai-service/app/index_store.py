@@ -132,6 +132,24 @@ class IndexStore:
             scored.append({"text": record["text"], "metadata": record["metadata"], "score": round(score, 4)})
         return sorted(scored, key=lambda item: item["score"], reverse=True)[:limit]
 
+    def search_by_source(self, name_fragment: str, limit: int = 5) -> list[dict]:
+        """Search for chunks whose source filename contains the given fragment."""
+        name_lower = name_fragment.lower().strip()
+        if not name_lower:
+            return []
+        if self._collection is not None:
+            all_data = self._collection.get(include=["documents", "metadatas"])
+            items = []
+            for text, metadata in zip(all_data.get("documents", []), all_data.get("metadatas", [])):
+                source = metadata.get("source", "").lower()
+                if name_lower in source:
+                    items.append({"text": text, "metadata": metadata, "score": 0.85})
+            return items[:limit]
+        return [
+            {"text": r["text"], "metadata": r["metadata"], "score": 0.85}
+            for r in self._records if name_lower in r["metadata"].get("source", "").lower()
+        ][:limit]
+
     def asset(self, tag: str) -> list[dict]:
         tag = tag.upper()
         if self._collection is not None:
@@ -150,6 +168,27 @@ class IndexStore:
         if self._collection is not None:
             return self._collection.count()
         return len(self._records)
+
+    def all_records(self) -> list[dict]:
+        if self._collection is not None:
+            all_data = self._collection.get(include=["documents", "metadatas"])
+            return [
+                {"text": text, "metadata": metadata}
+                for text, metadata in zip(all_data.get("documents", []), all_data.get("metadatas", []))
+            ]
+        return [{"text": r["text"], "metadata": r["metadata"]} for r in self._records]
+
+    def delete(self, document_id: str) -> None:
+        if self._collection is not None:
+            try:
+                old = self._collection.get(where={"document_id": str(document_id)})
+                if old and old.get("ids"):
+                    self._collection.delete(ids=old["ids"])
+            except Exception:
+                pass
+        else:
+            self._records = [r for r in self._records if str(r["metadata"].get("document_id")) != str(document_id)]
+            self._save_json()
 
     def _load_json(self) -> None:
         settings.index_path.parent.mkdir(parents=True, exist_ok=True)

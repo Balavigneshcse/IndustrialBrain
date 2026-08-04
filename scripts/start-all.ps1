@@ -24,23 +24,24 @@ function Start-IndusProcess($Name, $FilePath, $Arguments, $WorkingDirectory) {
     Write-Host "Started $Name (PID $($Process.Id))"
 }
 
-$Python = Join-Path $Root "ai-service\.venv\Scripts\python.exe"
-if (-not (Test-Path $Python)) {
+$Python = $null
+if (Test-Path (Join-Path $Root ".venv\Scripts\python.exe")) {
+    $Python = Join-Path $Root ".venv\Scripts\python.exe"
+} elseif (Test-Path (Join-Path $Root "ai-service\.venv\Scripts\python.exe")) {
+    $Python = Join-Path $Root "ai-service\.venv\Scripts\python.exe"
+} else {
     $SysPython = Get-Command python.exe -ErrorAction SilentlyContinue
     if ($SysPython) { $Python = $SysPython.Source }
-    else { throw "Run scripts\setup.ps1 first." }
+    else { throw "Python not found. Please make sure Python is installed and in PATH." }
 }
 
-Start-IndusProcess "ai-service" $Python @("run.py") (Join-Path $Root "ai-service")
+Write-Host "Using Python: $Python" -ForegroundColor Cyan
 
-$BackendArgs = @("spring-boot:run")
-if ($DemoMode) { $BackendArgs += "-Dspring-boot.run.profiles=demo" }
-$MavenCmd = Get-Command mvn.cmd -ErrorAction SilentlyContinue
-if ($MavenCmd) { $Maven = $MavenCmd.Source }
-elseif (Test-Path "C:\apache-maven-3.9.12\apache-maven-3.9.12\bin\mvn.cmd") { $Maven = "C:\apache-maven-3.9.12\apache-maven-3.9.12\bin\mvn.cmd" }
-else { $Maven = (Get-Command mvn.cmd -ErrorAction Stop).Source }
+# Start unified FastAPI backend (replaces legacy Java backend + Python ai-service)
+Start-IndusProcess "backend" $Python @("-m", "uvicorn", "server.main:app", "--host", "127.0.0.1", "--port", "8000") $Root
+
+# Start React frontend
 $Npm = (Get-Command npm.cmd -ErrorAction Stop).Source
-Start-IndusProcess "backend" $Maven $BackendArgs (Join-Path $Root "backend")
 Start-IndusProcess "frontend" $Npm @("run", "dev", "--", "--host", "127.0.0.1") (Join-Path $Root "frontend")
 
 Write-Host "Waiting for services..."
@@ -50,5 +51,5 @@ for ($Attempt = 1; $Attempt -le 30; $Attempt++) {
     powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "health-check.ps1")
     if ($LASTEXITCODE -eq 0) { $Healthy = $true; break }
 }
-if (-not $Healthy) { throw "One or more services did not become healthy. Check data\run and run health-check.ps1." }
+if (-not $Healthy) { throw "One or more services did not become healthy. Check logs and try health-check.ps1." }
 Write-Host "Open http://localhost:5173" -ForegroundColor Green

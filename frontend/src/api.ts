@@ -1,54 +1,63 @@
-const API = '/api'
+import { Session, DashboardData, DocumentRecord, ChatAnswer, AnswerFormat, AssetData, RcaData, AnalyticsData } from './types';
 
-export type Session = {
-  token: string
-  username: string
-  displayName: string
-  role: 'ADMIN' | 'ENGINEER'
+const API_BASE = '/api';
+
+function getAuthHeaders() {
+  const token = localStorage.getItem('token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
 }
 
-export async function request<T>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
-  const response = await fetch(`${API}${path}`, {
+async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const isFormData = options.body instanceof FormData;
+  
+  const headers: Record<string, string> = {};
+  const token = localStorage.getItem('token');
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (!isFormData) headers['Content-Type'] = 'application/json';
+
+  const res = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
-    headers: {
-      ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  })
-  const data = await response.json().catch(() => ({}))
-  if (!response.ok) {
-    if ((response.status === 401 || response.status === 403) && !path.startsWith('/auth/')) {
-      window.dispatchEvent(new Event('indusmind-unauthorized'))
-    }
-    throw new Error(data.message || `Request failed (${response.status})`)
+    headers: { ...headers, ...(options.headers as any) }
+  });
+
+  if (!res.ok) {
+    throw new Error(`API Error: ${res.statusText}`);
   }
-  return data as T
-}
 
-export function login(username: string, password: string) {
-  return request<Session>('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ username, password }),
-  })
-}
-
-export async function exportRca(tag: string, format: 'docx' | 'pdf' | 'csv', token: string): Promise<void> {
-  const response = await fetch(`${API}/assets/${encodeURIComponent(tag)}/rca/export?format=${format}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  if (!response.ok) {
-    const message = await response.text().catch(() => '')
-    throw new Error(message || `Export failed (${response.status})`)
+  // Handle binary download
+  const contentType = res.headers.get('content-type');
+  if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.wordprocessingml.document')) {
+    return res.blob() as any;
   }
-  const blob = await response.blob()
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `RCA-${tag.toUpperCase()}.${format}`
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
+
+  return res.json();
 }
 
+export const api = {
+  login: (credentials: any) => fetchApi<Session>('/auth/login', { method: 'POST', body: JSON.stringify(credentials) }),
+  getDashboard: () => fetchApi<DashboardData>('/dashboard'),
+  uploadDocument: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return fetchApi<any>('/documents/upload', { method: 'POST', body: formData });
+  },
+  getDocuments: () => fetchApi<DocumentRecord[]>('/documents'),
+  deleteDocument: (id: string) => fetchApi<any>(`/documents/${id}`, { method: 'DELETE' }),
+  chatQuery: (payload: { question: string, assetTag?: string, desiredFormat: AnswerFormat, history: any[] }) => 
+    fetchApi<ChatAnswer>('/chat/query', { method: 'POST', body: JSON.stringify(payload) }),
+  chatFeedback: (id: string, feedback: 1 | -1 | null) => fetchApi<any>(`/chat/${id}/feedback`, { method: 'PATCH', body: JSON.stringify({ feedback }) }),
+  getAsset: (tag: string) => fetchApi<AssetData>(`/assets/${tag}`),
+  generateRca: (tag: string) => fetchApi<RcaData>(`/rca/${tag}`, { method: 'POST' }),
+  exportRca: async (tag: string) => {
+    const blob = await fetchApi<Blob>(`/rca/export/${tag}`);
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `RCA_${tag}.docx`;
+    a.click();
+  },
+  getAnalytics: () => fetchApi<AnalyticsData>('/analytics')
+};

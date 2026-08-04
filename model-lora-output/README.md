@@ -1,12 +1,15 @@
 ---
-library_name: transformers
+library_name: peft
 model_name: model-lora-output
 tags:
-- generated_from_trainer
-- trl
+- base_model:adapter:D:\Web Development\IndustrialBrain-main\ai-service\scripts\..\local_model
+- lora
 - sft
-- unsloth
+- transformers
+- trl
 licence: license
+base_model: D:\Web Development\IndustrialBrain-main\ai-service\scripts\..\local_model
+pipeline_tag: text-generation
 ---
 
 # Model Card for model-lora-output
@@ -35,6 +38,7 @@ This model was trained with SFT.
 
 ### Framework versions
 
+- PEFT 0.19.1
 - TRL: 1.8.0
 - Transformers: 5.14.1
 - Pytorch: 2.9.1+cu126

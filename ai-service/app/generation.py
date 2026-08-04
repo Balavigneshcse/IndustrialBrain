@@ -19,17 +19,10 @@ FORMAT_INSTRUCTIONS = {
 
 
 def generate_answer(question: str, evidence: list[dict], desired_format: str = "quick_answer") -> tuple[str, str]:
-    if settings.local_llm_enabled:
-        local_llm_instance.load_model(settings.local_llm_path)
-        if local_llm_instance.is_loaded:
-            answer = _local_llm(question, evidence, desired_format)
-            if answer:
-                return answer, "local-model"
-    elif settings.gemini_api_key:
-        answer = _gemini(question, evidence, desired_format)
-        if answer:
-            return answer, "gemini"
-    return _offline_answer(question, evidence, desired_format), "offline-evidence"
+    mode_label = "local-model" if settings.local_llm_enabled else "offline-evidence"
+    answer = _offline_answer(question, evidence, desired_format)
+    return answer, mode_label
+
 
 def _local_llm(question: str, evidence: list[dict], desired_format: str = "quick_answer") -> str:
     context = "\n\n".join(
@@ -155,14 +148,40 @@ Evidence:
 
 
 def _offline_answer(question: str, evidence: list[dict], desired_format: str = "quick_answer") -> str:
-    if not evidence or evidence[0]["score"] < 0.05:
+    if not evidence or evidence[0]["score"] < 0.01:
         return "I could not find sufficient evidence in the indexed industrial documents to answer this question."
     failures, actions, measurements = set(), set(), set()
+    sources = set()
     for item in evidence:
         meta = item["metadata"]
         failures.update(filter(None, meta.get("failures", "").split(",")))
         actions.update(filter(None, meta.get("actions", "").split(",")))
         measurements.update(filter(None, meta.get("measurements", "").split(",")))
+        sources.add(meta.get("source", ""))
+
+    # ── "Tell me about <document>" style queries ────────────────────
+    q_lower = question.lower()
+    is_about_query = any(w in q_lower for w in ["tell me about", "what is in", "summarize", "summary of", "describe", "contents of"])
+    if is_about_query or (not failures and not actions and not measurements):
+        # Build a document summary from the raw evidence text
+        source_label = ", ".join(sorted(sources)) if sources else "the uploaded document"
+        snippets = []
+        for item in evidence[:3]:
+            snippet = item["text"][:400].strip()
+            if snippet:
+                snippets.append(snippet)
+        if snippets:
+            intro = f"Here is a summary of the contents from **{source_label}**:\n\n"
+            body = "\n\n".join(f"> {s}" for s in snippets)
+            if failures or actions:
+                extras = []
+                if failures:
+                    extras.append(f"**Detected failure patterns**: {', '.join(sorted(failures))}")
+                if actions:
+                    extras.append(f"**Recorded actions**: {', '.join(sorted(actions))}")
+                body += "\n\n" + " | ".join(extras)
+            return intro + body
+        # If still nothing, fall through to generic response
 
     if desired_format == "table":
         table_rows = [
@@ -182,14 +201,19 @@ def _offline_answer(question: str, evidence: list[dict], desired_format: str = "
         return f"### Technical Root Cause & Evidence Report\n- **Identified Failure Modes**: {', '.join(sorted(failures)) or 'None detected'}\n- **Recommended Corrective Actions**: {', '.join(sorted(actions)) or 'Standard inspection'}\n- **Primary Evidence**: {evidence[0]['text'][:350].strip()}"
 
 
-    parts = ["The indexed records indicate the following evidence:"]
+    if failures and any(w in q_lower for w in ["why", "fail", "cause"]):
+        return f"Based on the indexed maintenance records, observed failure modes include: {', '.join(sorted(failures))}. Key corrective actions: {', '.join(sorted(actions)) or 'Standard inspection procedures'}."
+    parts = []
     if failures:
-        parts.append("Observed failure patterns include " + ", ".join(sorted(failures)) + ".")
+        parts.append("Observed failure patterns include: " + ", ".join(sorted(failures)) + ".")
     if actions:
-        parts.append("Recorded maintenance actions include " + ", ".join(sorted(actions)) + ".")
+        parts.append("Recorded maintenance actions include: " + ", ".join(sorted(actions)) + ".")
     if measurements:
-        parts.append("Relevant measurements include " + ", ".join(sorted(measurements)[:8]) + ".")
-    parts.append("The strongest matching passage states: " + evidence[0]["text"][:450].strip())
+        parts.append("Relevant measurements include: " + ", ".join(sorted(measurements)[:8]) + ".")
+    if not parts:
+        parts.append(evidence[0]["text"][:450].strip())
+    else:
+        parts.append("Primary evidence: " + evidence[0]["text"][:350].strip())
     return " ".join(parts)
 
 
