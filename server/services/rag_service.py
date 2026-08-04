@@ -154,18 +154,28 @@ class RAGService:
 
         # Check if query asks about a specific file by filename or extension
         q_lower = question.lower()
-        if any(ext in q_lower for ext in [".xlsx", ".xls", ".pdf", ".docx", ".csv", ".pptx", ".txt", ".html", ".eml", ".md"]) or "about " in q_lower or "summarize " in q_lower:
-            try:
-                all_data = self._collection.get(include=["documents", "metadatas"])
+        try:
+            all_data = self._collection.get(include=["documents", "metadatas"])
+            matched_sources = set()
+            for meta in all_data.get("metadatas", []):
+                src = meta.get("source", "")
+                if not src:
+                    continue
+                src_lower = src.lower()
+                base_name = src_lower.rsplit(".", 1)[0]
+                base_words = [w for w in re.split(r'[_\-\s\.\(\)]+', base_name) if len(w) >= 3 and w not in ("copy", "sheet", "data", "1", "2")]
+                if (src_lower in q_lower or base_name in re.sub(r'[_\-\s\.\(\)]+', ' ', q_lower) or
+                    (len(base_words) >= 2 and all(w in q_lower for w in base_words))):
+                    matched_sources.add(src)
+            if matched_sources:
                 file_items = []
                 for text, meta in zip(all_data.get("documents", []), all_data.get("metadatas", [])):
-                    src = meta.get("source", "").lower()
-                    if src and (src in q_lower or any(w in src for w in q_lower.replace("(", " ").replace(")", " ").split() if len(w) > 4 and w in src)):
+                    if meta.get("source") in matched_sources:
                         file_items.append({"text": text, "metadata": meta, "score": 1.0})
                 if file_items:
                     return file_items[:limit]
-            except Exception:
-                pass
+        except Exception:
+            pass
 
         return items[:limit]
 
@@ -272,10 +282,42 @@ class RAGService:
 
         confidence = min(0.94, 0.55 + len(evidence) * 0.035 + evidence[0]["score"] * 0.22)
 
-        # Document summary queries
+        # Check if question is asking about Units, Chapters, Topics, Subjects, or Questions in academic/technical documents
         q_lower = question.lower()
-        is_about = any(w in q_lower for w in ABOUT_PHRASES) or qtype == "document"
-        if is_about or (not failures and not actions and not measurements):
+        is_about = any(w in q_lower for w in ABOUT_PHRASES)
+        is_academic = any("unit:" in item["text"].lower() or "question:" in item["text"].lower() or "subjectcode:" in item["text"].lower() for item in evidence)
+        if is_academic and not is_about:
+            units_found = sorted(list(set(re.findall(r'Unit:\s*(\d+)', " ".join(item["text"] for item in evidence), re.IGNORECASE))))
+            subj_match = re.search(r'SubjectCode:\s*([A-Za-z0-9]+)', evidence[0]["text"], re.IGNORECASE)
+            subj_str = f" ({subj_match.group(1)})" if subj_match else ""
+            source_name = evidence[0]["metadata"].get("source", "Question Bank")
+            
+            lines = [f"### Technical & Academic Analysis: **{source_name}**{subj_str}\n"]
+            if units_found:
+                lines.append(f"**Identified Curriculum Units**: Unit {', '.join(units_found)}\n")
+            
+            lines.append("**Key Topics & Sample Questions Extracted from Evidence:**")
+            seen_qs = set()
+            for item in evidence:
+                text = item["text"]
+                unit_num = re.search(r'Unit:\s*(\d+)', text, re.IGNORECASE)
+                u_label = f"Unit {unit_num.group(1)}" if unit_num else "Topic"
+                q_match = re.search(r'Question:\s*(.*?)(?=\s*\|\s*(?:Mark:|Year:|Major:|SubjectCode:|$))', text, re.IGNORECASE)
+                if q_match:
+                    q_text = " ".join(q_match.group(1).split())
+                    if q_text not in seen_qs:
+                        seen_qs.add(q_text)
+                        lines.append(f"- **[{u_label}]**: {q_text}")
+                else:
+                    clean_chunk = " ".join(text.split())[:180]
+                    if clean_chunk not in seen_qs:
+                        seen_qs.add(clean_chunk)
+                        lines.append(f"- **[{u_label}]**: {clean_chunk}")
+            
+            return "\n".join(lines[:12]), "local-model", confidence
+
+        # Document summary queries
+        if is_about or qtype == "document":
             source_label = ", ".join(sorted(sources)) if sources else "the uploaded document"
             clean_blocks = []
             for item in evidence:
