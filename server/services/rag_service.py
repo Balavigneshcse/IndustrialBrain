@@ -161,16 +161,9 @@ class RAGService:
                 for text, meta in zip(all_data.get("documents", []), all_data.get("metadatas", [])):
                     src = meta.get("source", "").lower()
                     if src and (src in q_lower or any(w in src for w in q_lower.replace("(", " ").replace(")", " ").split() if len(w) > 4 and w in src)):
-                        file_items.append({"text": text, "metadata": meta, "score": 0.95})
-                # Prepend matching file items and deduplicate by text
-                seen = set()
-                combined = []
-                for item in file_items + items:
-                    t = item["text"]
-                    if t not in seen:
-                        seen.add(t)
-                        combined.append(item)
-                items = combined
+                        file_items.append({"text": text, "metadata": meta, "score": 1.0})
+                if file_items:
+                    return file_items[:limit]
             except Exception:
                 pass
 
@@ -284,17 +277,25 @@ class RAGService:
         is_about = any(w in q_lower for w in ABOUT_PHRASES) or qtype == "document"
         if is_about or (not failures and not actions and not measurements):
             source_label = ", ".join(sorted(sources)) if sources else "the uploaded document"
-            snippets = [item["text"][:400].strip() for item in evidence[:3] if item["text"].strip()]
-            if snippets:
-                intro = f"Here is a summary of **{source_label}**:\n\n"
-                body = "\n\n".join(f"> {s}" for s in snippets)
+            clean_blocks = []
+            for item in evidence:
+                text = item["text"].strip()
+                if text and text not in clean_blocks:
+                    clean_blocks.append(text)
+            if clean_blocks:
+                intro = f"### Document Summary: **{source_label}**\n\n"
+                formatted_blocks = []
+                for idx, block in enumerate(clean_blocks[:3], 1):
+                    clean_text = " ".join(block.split())
+                    formatted_blocks.append(f"**Section {idx}**:\n{clean_text}")
+                body = "\n\n".join(formatted_blocks)
                 if failures or actions:
                     extras = []
                     if failures:
-                        extras.append(f"**Detected failure patterns**: {', '.join(sorted(failures))}")
+                        extras.append(f"- **Detected Failure Modes**: {', '.join(sorted(failures))}")
                     if actions:
-                        extras.append(f"**Recorded actions**: {', '.join(sorted(actions))}")
-                    body += "\n\n" + " | ".join(extras)
+                        extras.append(f"- **Recorded Maintenance Actions**: {', '.join(sorted(actions))}")
+                    body += "\n\n---\n**Extracted Operational Patterns:**\n" + "\n".join(extras)
                 return intro + body, "local-model", confidence
 
         # Format-specific answers
