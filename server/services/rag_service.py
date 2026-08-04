@@ -286,7 +286,7 @@ class RAGService:
         q_lower = question.lower()
         is_about = any(w in q_lower for w in ABOUT_PHRASES)
         is_academic = any("unit:" in item["text"].lower() or "question:" in item["text"].lower() or "subjectcode:" in item["text"].lower() for item in evidence)
-        if is_academic and not is_about:
+        if is_academic:
             units_found = sorted(list(set(re.findall(r'Unit:\s*(\d+)', " ".join(item["text"] for item in evidence), re.IGNORECASE))))
             subj_match = re.search(r'SubjectCode:\s*([A-Za-z0-9]+)', evidence[0]["text"], re.IGNORECASE)
             subj_str = f" ({subj_match.group(1)})" if subj_match else ""
@@ -339,19 +339,18 @@ class RAGService:
                 if text and text not in clean_blocks:
                     clean_blocks.append(text)
             if clean_blocks:
-                intro = f"### Document Summary: **{source_label}**\n\n"
-                formatted_blocks = []
-                for idx, block in enumerate(clean_blocks[:3], 1):
-                    clean_text = " ".join(block.split())
-                    formatted_blocks.append(f"**Section {idx}**:\n{clean_text}")
-                body = "\n\n".join(formatted_blocks)
+                intro = f"Here is an overview of **{source_label}**:\n\n"
+                summary_text = " ".join(" ".join(b.split()) for b in clean_blocks[:2])
+                if len(summary_text) > 600:
+                    summary_text = summary_text[:600] + "..."
+                body = f"The document contains records and data structured as follows:\n\n> {summary_text}"
                 if failures or actions:
                     extras = []
                     if failures:
-                        extras.append(f"- **Detected Failure Modes**: {', '.join(sorted(failures))}")
+                        extras.append(f"* **Detected Failure Modes**: {', '.join(sorted(failures))}")
                     if actions:
-                        extras.append(f"- **Recorded Maintenance Actions**: {', '.join(sorted(actions))}")
-                    body += "\n\n---\n**Extracted Operational Patterns:**\n" + "\n".join(extras)
+                        extras.append(f"* **Recorded Maintenance Actions**: {', '.join(sorted(actions))}")
+                    body += "\n\n**Operational Highlights**:\n" + "\n".join(extras)
                 return intro + body, "local-model", confidence
 
         # Format-specific answers
