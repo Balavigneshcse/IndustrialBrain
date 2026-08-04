@@ -59,17 +59,20 @@ async def upload_document(
     db.refresh(doc)
 
     return {
-        "id": doc.id,
+        "id": str(doc.id),
         "documentId": doc.document_id,
         "originalName": doc.original_name,
+        "filename": doc.original_name,
         "contentType": doc.content_type,
         "sizeBytes": doc.size_bytes,
-        "status": doc.status,
+        "size": doc.size_bytes or 0,
+        "status": (doc.status or "ready").lower(),
         "documentType": doc.document_type,
         "assetTags": doc.asset_tags,
         "summary": doc.summary,
         "uploadedBy": doc.uploaded_by,
         "uploadedAt": str(doc.uploaded_at) if doc.uploaded_at else "",
+        "uploadDate": str(doc.uploaded_at) if doc.uploaded_at else "",
     }
 
 
@@ -78,18 +81,21 @@ def list_documents(db: Session = Depends(get_db), user: dict = Depends(get_curre
     docs = db.query(Document).order_by(Document.id.desc()).all()
     return [
         {
-            "id": d.id,
+            "id": str(d.id),
             "documentId": d.document_id,
             "originalName": d.original_name,
+            "filename": d.original_name or "untitled",
             "contentType": d.content_type or "",
             "sizeBytes": d.size_bytes or 0,
-            "status": d.status or "QUEUED",
+            "size": d.size_bytes or 0,
+            "status": (d.status or "ready").lower(),
             "documentType": d.document_type or "",
             "assetTags": d.asset_tags or "",
             "summary": d.summary or "",
             "errorMessage": d.error_message,
             "uploadedBy": d.uploaded_by or "",
             "uploadedAt": str(d.uploaded_at) if d.uploaded_at else "",
+            "uploadDate": str(d.uploaded_at) if d.uploaded_at else "",
         }
         for d in docs
     ]

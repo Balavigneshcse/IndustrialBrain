@@ -30,7 +30,7 @@ export const Dashboard: React.FC = () => {
         <div className="card">
           <h2 style={{ marginBottom: '1rem', fontSize: '1.25rem' }}>Monitored Assets</h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            {data.assetTags.map(tag => (
+            {(data.assetTags || []).map(tag => (
               <span key={tag} className="badge" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', fontSize: '0.9rem', padding: '0.5rem 1rem' }}>
                 {tag}
               </span>
@@ -41,10 +41,10 @@ export const Dashboard: React.FC = () => {
         <div className="card">
           <h2 style={{ marginBottom: '1rem', fontSize: '1.25rem' }}>Recent Operations</h2>
           <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {data.recentQueries.map((q, i) => (
+            {(data.recentQueries || []).map((q: any, i) => (
               <li key={i} style={{ fontSize: '0.9rem', paddingBottom: '1rem', borderBottom: i !== data.recentQueries.length - 1 ? '1px solid var(--border-color)' : 'none' }}>
                 <span style={{ color: 'var(--accent-primary)', marginRight: '0.5rem' }}>✦</span>
-                {q}
+                {typeof q === 'string' ? q : (q.question || JSON.stringify(q))}
               </li>
             ))}
           </ul>

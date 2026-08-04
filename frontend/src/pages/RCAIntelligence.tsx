@@ -69,13 +69,13 @@ export const RCAIntelligence: React.FC = () => {
             <div>
               <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--accent-warning)' }}>Contributing Factors</h3>
               <ul style={{ paddingLeft: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {rca.contributingFactors.map((f, i) => <li key={i}>{f}</li>)}
+                {(rca.contributingFactors || []).map((f, i) => <li key={i}>{f}</li>)}
               </ul>
             </div>
             <div>
               <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--accent-primary)' }}>Recommendations</h3>
               <ul style={{ paddingLeft: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {rca.recommendations.map((r, i) => <li key={i}>{r}</li>)}
+                {(rca.recommendations || []).map((r, i) => <li key={i}>{r}</li>)}
               </ul>
             </div>
           </div>

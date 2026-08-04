@@ -13,8 +13,8 @@ export const Analytics: React.FC = () => {
 
   if (!data) return <div className="page-container"><div className="spinner"></div></div>;
 
-  const maxFailure = Math.max(...data.topFailureModes.map(d => d.value), 1);
-  const maxAction = Math.max(...data.topActions.map(d => d.value), 1);
+  const maxFailure = Math.max(...(data.topFailureModes || []).map(d => d.value), 1);
+  const maxAction = Math.max(...(data.topActions || []).map(d => d.value), 1);
 
   return (
     <div className="page-container animate-fade-in">
@@ -31,11 +31,11 @@ export const Analytics: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
         <div className="card">
           <h2 style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>Top Failure Modes</h2>
-          <BarChart data={data.topFailureModes} max={maxFailure} />
+          <BarChart data={data.topFailureModes || []} max={maxFailure} />
         </div>
         <div className="card">
           <h2 style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>Top Maintenance Actions</h2>
-          <BarChart data={data.topActions} max={maxAction} />
+          <BarChart data={data.topActions || []} max={maxAction} />
         </div>
       </div>
 
@@ -51,7 +51,7 @@ export const Analytics: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {data.assetsRankedByRisk.map((asset, i) => (
+              {(data.assetsRankedByRisk || []).map((asset, i) => (
                 <tr key={asset.tag}>
                   <td style={{ fontWeight: 600, color: 'var(--accent-primary)' }}>{asset.tag}</td>
                   <td>
@@ -62,7 +62,7 @@ export const Analytics: React.FC = () => {
                       <span style={{ fontSize: '0.85rem' }}>{asset.riskScore}/100</span>
                     </div>
                   </td>
-                  <td>{new Date(asset.lastFailure).toLocaleDateString()}</td>
+                  <td>{new Date(asset.lastFailure || Date.now()).toLocaleDateString()}</td>
                 </tr>
               ))}
             </tbody>

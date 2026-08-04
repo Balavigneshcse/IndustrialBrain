@@ -46,20 +46,20 @@ export const Asset360: React.FC = () => {
       {asset && (
         <div className="animate-slide-up">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-            <StatCard title="Knowledge Sources" value={asset.sources.length} icon="▤" variant="blue" />
-            <StatCard title="Recorded Failures" value={asset.failures.length} icon="⚠" variant="amber" />
-            <StatCard title="Maintenance Actions" value={asset.maintenanceActions.length} icon="⚙" variant="purple" />
-            <StatCard title="Evidence Chunks" value={asset.evidenceChunks} icon="✦" variant="teal" />
+            <StatCard title="Knowledge Sources" value={(asset.sources || []).length} icon="▤" variant="blue" />
+            <StatCard title="Recorded Failures" value={(asset.failures || []).length} icon="⚠" variant="amber" />
+            <StatCard title="Maintenance Actions" value={(asset.maintenanceActions || []).length} icon="⚙" variant="purple" />
+            <StatCard title="Evidence Chunks" value={asset.evidenceChunks || 0} icon="✦" variant="teal" />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
             <div className="card">
               <h3 style={{ marginBottom: '1rem', fontSize: '1.2rem' }}>Operational Timeline</h3>
               <div className="timeline">
-                {asset.timeline.map((evt, i) => (
+                {(asset.timeline || []).map((evt, i) => (
                   <div key={i} className="timeline-item">
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>{new Date(evt.date).toLocaleDateString()}</div>
-                    <div style={{ fontWeight: 500 }}>{evt.event}</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>{new Date(evt.date || Date.now()).toLocaleDateString()}</div>
+                    <div style={{ fontWeight: 500 }}>{evt.event || ''}</div>
                   </div>
                 ))}
               </div>
@@ -69,12 +69,12 @@ export const Asset360: React.FC = () => {
               <div className="card">
                 <h3 style={{ marginBottom: '1rem', fontSize: '1.2rem' }}>Known Failure Modes</h3>
                 <ul style={{ paddingLeft: '1.5rem', color: 'var(--accent-warning)' }}>
-                  {asset.failures.map((f, i) => <li key={i} style={{ marginBottom: '0.5rem' }}>{f}</li>)}
+                  {(asset.failures || []).map((f, i) => <li key={i} style={{ marginBottom: '0.5rem' }}>{f}</li>)}
                 </ul>
               </div>
               <div className="card">
                 <h3 style={{ marginBottom: '1rem', fontSize: '1.2rem' }}>Key Measurements</h3>
-                {Object.entries(asset.measurements).map(([k, v]) => (
+                {Object.entries(asset.measurements || {}).map(([k, v]) => (
                   <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid var(--border-color)' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>{k}</span>
                     <span style={{ fontWeight: 600 }}>{v}</span>
