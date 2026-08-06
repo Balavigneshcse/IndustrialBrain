@@ -17,47 +17,37 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, onL
   ];
 
   return (
-    <nav className="sidebar">
-      <div style={{ padding: '0 2rem', marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span>✦</span> IndusMind
-        </h1>
+    <aside className="sidebar">
+      <div className="sidebar-brand">
+        <div className="sidebar-brand-icon">✦</div>
+        <div>
+          <h1>IndusMind</h1>
+          <div className="sidebar-brand-sub">Industrial AI</div>
+        </div>
       </div>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0 1rem' }}>
+
+      <nav className="sidebar-nav">
         {navItems.map(item => {
           const isActive = currentView === item.id;
           return (
             <button
               key={item.id}
               onClick={() => onChangeView(item.id)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1rem',
-                padding: '0.75rem 1rem',
-                border: 'none',
-                background: isActive ? 'rgba(0, 212, 170, 0.1)' : 'transparent',
-                color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                borderRadius: '6px',
-                borderLeft: isActive ? '3px solid var(--accent-primary)' : '3px solid transparent',
-                textAlign: 'left',
-                fontSize: '1rem',
-                transition: 'all 0.2s',
-                boxShadow: isActive ? '0 0 10px rgba(0, 212, 170, 0.2)' : 'none'
-              }}
+              className={`nav-item ${isActive ? 'active' : ''}`}
             >
-              <span style={{ fontSize: '1.2rem', color: isActive ? 'var(--accent-primary)' : 'inherit' }}>{item.icon}</span>
-              {item.label}
+              <span className="nav-icon">{item.icon}</span>
+              <span>{item.label}</span>
             </button>
           );
         })}
-      </div>
-      <div style={{ padding: '2rem 1rem', borderTop: '1px solid var(--border-color)' }}>
-        <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={onLogout}>
-          <span style={{ fontSize: '1.2rem' }}>○</span> Logout
+      </nav>
+
+      <div className="sidebar-footer">
+        <button className="nav-item" onClick={onLogout} style={{ color: 'var(--accent-danger)' }}>
+          <span className="nav-icon">○</span>
+          <span>Sign Out</span>
         </button>
       </div>
-    </nav>
+    </aside>
   );
 };

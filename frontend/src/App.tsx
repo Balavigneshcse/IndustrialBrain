@@ -14,6 +14,15 @@ function App() {
   const [username, setUsername] = useState(localStorage.getItem('username') || '');
   const [currentView, setCurrentView] = useState('dashboard');
 
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  }, []);
+
   const handleLogin = (t: string, u: string) => {
     localStorage.setItem('token', t);
     localStorage.setItem('username', u);
@@ -58,9 +67,9 @@ function App() {
       <Sidebar currentView={currentView} onChangeView={setCurrentView} onLogout={handleLogout} />
       <div className="main-content">
         <Topbar title={titles[currentView] || ''} username={username} />
-        <div style={{ position: 'relative' }}>
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           {renderView()}
-        </div>
+        </main>
       </div>
     </div>
   );
