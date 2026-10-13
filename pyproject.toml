@@ -1,0 +1,6 @@
+# Tool configuration for the Python code (server/, eval/). Dependencies are in server/requirements*.txt.
+
+[tool.pytest.ini_options]
+testpaths = ["server/tests"]
+pythonpath = ["."]
+filterwarnings = ["ignore::DeprecationWarning"]

@@ -1,5 +1,5 @@
 """Extractive answers and RCA briefs assembled from retrieved evidence (no language model yet;
-Phase 3 of docs/UPGRADE_PLAN.md adds one). Pure functions: no database access.
+Phase 3 of docs/upgrade-plan.md adds one). Pure functions: no database access.
 
 Evidence items are dicts: {"text", "score", "chunk_id", "metadata": {source, page, document_id,
 document_type, asset_tags, failures, actions, dates, measurements}} with list fields joined by commas.

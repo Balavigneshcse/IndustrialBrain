@@ -1,5 +1,5 @@
-// These mirror the JSON the FastAPI server returns today (server/routers/*.py).
-// Phase 4 of docs/UPGRADE_PLAN.md replaces them with types generated from OpenAPI.
+// These mirror the JSON the FastAPI server returns today (server/app/schemas/*.py).
+// Phase 4 of docs/upgrade-plan.md replaces them with types generated from OpenAPI.
 
 export interface Session {
   token: string;

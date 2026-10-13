@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Downloads the base model, training datasets and CPU retrieval models listed in docs/UPGRADE_PLAN.md §7.
+# Downloads the base model, training datasets and CPU retrieval models listed in docs/upgrade-plan.md §7.
 # Run as your normal WSL user:  wsl -d Ubuntu -- bash ml/setup/03_download_models_data.sh
 # Safe to re-run: `hf download` resumes and skips files that are already complete.
 set -euo pipefail
 
 PROJECT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RAW="$PROJECT/ml/data/raw"
-FASTEMBED_DIR="$PROJECT/models/fastembed"
+FASTEMBED_DIR="$PROJECT/data/models/fastembed"
 TOOLS="$HOME/indusmind-tools/.venv"
 export PATH="$HOME/.local/bin:$PATH"
 
@@ -34,7 +34,7 @@ if [ ! -f "$RAW/ai4i2020/ai4i2020.csv" ]; then
   rm -f "$RAW/ai4i2020.zip"
 fi
 
-echo "[03] retrieval models (ONNX, CPU) -> models/fastembed"
+echo "[03] retrieval models (ONNX, CPU) -> data/models/fastembed"
 python - "$FASTEMBED_DIR" <<'EOF'
 import sys
 from fastembed import TextEmbedding

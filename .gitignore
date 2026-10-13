@@ -1,7 +1,14 @@
-# Secrets
+# Secrets (generate .env with scripts/init-env.ps1)
 .env
 *.env
 !.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+unsloth_compiled_cache/
 
 # Node
 frontend/node_modules/
@@ -10,46 +17,22 @@ frontend/*.tsbuildinfo
 frontend/vite.config.js
 frontend/vite.config.d.ts
 
-# Python
-**/__pycache__/
-*.py[cod]
-.pytest_cache/
-.venv/
-unsloth_compiled_cache/
+# Local runtime data: uploads (may contain personal documents), downloaded
+# retrieval models, legacy SQLite/Chroma files. Created on demand.
+/data/
 
-# Runtime data (uploads can contain personal documents; never commit them)
-data/uploads/*
-!data/uploads/.gitkeep
-data/chroma/*
-!data/chroma/.gitkeep
-data/index/*
-!data/index/.gitkeep
-data/run/
-data/*.db
-
-# ML datasets (incl. ml/data/raw/legacy/), model caches, training outputs and logs
+# ML: datasets, model caches, training outputs, logs
 ml/data/
 ml/out/
 ml/logs/
-/models/
 
-# Training checkpoints of the (retired) Llama-3-8B LoRA adapter; the adapter itself stays tracked until Phase 5 replaces it
-model-lora-output/checkpoint-*/
-
-# Eval scratch space
+# Evaluation scratch space
 eval/.work/
 
-# IDE / OS
+# Editors, OS, local tool config
 .idea/
 .vscode/
 *.iml
 .DS_Store
 Thumbs.db
-
-# Generated QA
-outputs/
-docs/rendered/
-presentation/preview/
-
-# Local Claude Code preview config
 .claude/launch.json
