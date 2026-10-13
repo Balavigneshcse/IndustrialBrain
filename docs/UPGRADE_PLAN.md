@@ -167,7 +167,7 @@ eval/
   run_eval.py      retrieval + answer metrics; also runs in CI with a fake LLM
 deploy/
   docker-compose.yml  Caddyfile  .env.example  backup.cmd  wslconfig.example
-frontend/          React 19 + Vite (upgraded, §5 Phase 4)
+frontend/          New professional UI, rebuilt from scratch (§5 Phase 4)
 docs/              README, SETUP, RUNBOOK, API (generated), ARCHITECTURE, MODEL_CARD
 ```
 
@@ -295,21 +295,72 @@ Answer quality did not change: Phase 0 removed broken and dishonest behaviour, a
 - **Follow-up questions:** the last 3 turns are kept, and a short query-rewrite call turns follow-ups like "more details" into standalone questions.
 - **Degraded mode:** if Ollama is down, answers are clearly labeled "LLM offline: showing top evidence".
 
-### Phase 4: Frontend
-- Add react-router (real URLs), TanStack Query, and API types generated with **`openapi-typescript` from `/openapi.json`**. CI fails when they don't match.
-- **Chat:**
-  - Answers render with `react-markdown`, `remark-gfm` and `rehype-sanitize`, so tables work and HTML is sanitized.
-  - Clickable `[S#]` chips open the source excerpt, highlighted, with its page.
-  - Streaming, stop, queue position, feedback, and a copy-as-work-order button.
-- **Upload:** multiple files, progress bars, live job status, and a visible reason when a file fails.
-- **Pages:**
-  - **Asset 360:** chronological timeline from `asset_events`.
-  - **RCA:** structured view, with DOCX and PDF export.
-  - **Analytics:** real event counts and a risk ranking.
-  - **Asset registry:** admin page for CSV import.
-  - **Users and roles:** admin page.
-- **Auth:** silent token refresh; a 401 sends you to login. The UI adapts to the user's role.
-- **Robustness:** error boundaries, empty and loading states, health indicator from `/health/ready`, responsive layout, and basic accessibility (labels, focus states, contrast).
+### Phase 4: New professional frontend (complete rebuild)
+The current UI is **replaced, not patched**. A new `frontend/` is built from scratch against the `/api/v1` contract. The old one stays in git history. Until the new UI ships, the server keeps the old `/api/...` routes as a hidden alias so the current UI keeps working.
+
+**4.1 Design first, approved before any code**
+- **Direction:** an industrial operations console. It should be calm, data-dense, high-contrast and fast to scan, so engineers find the evidence in seconds. Light and dark themes.
+- **Design system:**
+  - **Color:** neutral surfaces, one brand accent, and status colors for severity and criticality (normal / warning / alarm / trip).
+  - **Type and layout:** a type scale, spacing grid, radius and elevation tokens, and a data-table density standard.
+- **Mockups:** the key screens (overview, library, copilot, Asset 360, RCA, admin) are mocked up as clickable prototypes **for your approval** before implementation.
+
+**4.2 Stack**
+
+| Concern | Choice |
+|---|---|
+| Core | React 19, TypeScript (strict), Vite |
+| Styling and components | Tailwind CSS v4 + shadcn/ui (Radix primitives, so it's accessible by default) |
+| Routing and data | TanStack Router (typed URLs) and TanStack Query (cache, retries, background refresh) |
+| API client | `openapi-typescript` + `openapi-fetch`, generated from `/api/v1/openapi.json`. CI fails on drift, so the RCA/Analytics bug class can't come back. |
+| Tables | TanStack Table (sort, filter, paginate, column visibility) |
+| Forms | react-hook-form + zod |
+| Charts | Recharts |
+| Content | `react-markdown` + `remark-gfm` + `rehype-sanitize` for answers |
+| UI helpers | lucide icons, sonner toasts, cmdk command palette |
+
+**4.3 App shell**
+- Collapsible sidebar and breadcrumbs.
+- **Ctrl+K command palette:** jump to any asset, document or recent question.
+- User menu: profile, theme, sign out.
+- Live system status from `/health/ready`: database, model, queue.
+- Notifications when background jobs finish.
+
+**4.4 Screens**
+- **Sign-in:** clear lockout and rate-limit messages, silent token refresh, sign-out everywhere.
+- **Overview:** KPIs, asset health list (failure mentions, last event, criticality), ingestion queue, recent questions, model status.
+- **Knowledge library:**
+  - A data grid with search and filters (type, status, asset tag, uploader).
+  - Multi-file drag and drop with per-file progress and live job status.
+  - A document drawer: metadata, extracted entities, chunks, original file preview and download, re-index, delete with confirmation.
+- **Copilot:**
+  - Streaming answers with a stop button and queue position.
+  - Conversation history, asset filter and answer-format picker.
+  - Inline `[S1]` chips open an evidence panel with the highlighted excerpt and page, and can open the original file.
+  - Evidence-strength badge, feedback, copy and "export as work order".
+- **Assets:**
+  - A registry list (search, class, criticality, location).
+  - An **Asset 360** page: header card, chronological event timeline, failure and action breakdown, measurement trend charts from readings, related documents, and a "Generate RCA" action.
+- **RCA workspace:**
+  - Generate from an asset, then edit the structured report (problem, causes with evidence, actions, investigation, prevention).
+  - Citations, saved versions, DOCX and PDF export.
+- **Analytics:** failure modes over time and by asset class, actions, answer feedback, ingestion and usage statistics.
+- **Admin:** users and roles (create, deactivate, reset password), asset-registry CSV import, audit-log viewer, system and model status.
+- **Profile:** change password, theme.
+- **Edge cases:** 403, 404 and offline pages, empty states with next steps, skeleton loading.
+
+**4.5 Quality bar**
+- **Accessibility:** WCAG 2.1 AA (keyboard navigation, visible focus, contrast, ARIA).
+- **Responsive:** built for 1280 px and up; usable on tablets; mobile gets read-only views.
+- **Performance:** initial JS under 250 KB gzipped, route-level code splitting.
+- **Robustness:** UI strings kept ready for translation, error boundaries, consistent toasts.
+
+**4.6 Tests**
+- Vitest + Testing Library for components, with MSW mocking the API.
+- **Playwright end to end:** login → upload → ask → open citation → RCA export → admin creates user.
+- Playwright screenshot checks of the key screens.
+
+**4.7 Delivery:** built into the nginx `web` container. The old `/api` alias is removed when the new UI ships.
 
 ### Phase 5: ML. Datasets, fine-tune, evaluation, export (⬇ DOWNLOAD, waits for your go)
 
@@ -582,7 +633,7 @@ wsl -d Ubuntu --cd ~ -- bash -lc "source ~/indusmind-ml/.venv/bin/activate && py
 | 2 | 1: Backend foundation | ⬇ images and dependencies (#4, #6) | Postgres stack, auth/RBAC, migrations, OpenAPI |
 | 3 | 2: Ingestion and retrieval | ⬇ #5, #7, #8 | Background ingestion, hybrid search, real Asset 360 |
 | 4 | 3: Generation | ⬇ #1, #2 | Real streamed LLM answers with citations |
-| 5 | 4: Frontend | ⬇ npm dependencies | Generated types, markdown, citation chips, admin pages |
+| 5 | 4: New professional frontend (rebuild) | ⬇ npm dependencies and Playwright browsers | Approved mockups, then a new UI: command palette, streaming copilot, Asset 360, RCA workspace, admin |
 | 6 | 5: ML | ⬇ #10–#16 (+ #3, #17 optional) | `indusmind:4b-v1` plus the eval report |
 | 7 | 6–7: Quality and load test | ⬇ dev tools | CI, measured capacity numbers |
 | 8 | 8: Docs and slides | No | Docs and presentation match reality |
