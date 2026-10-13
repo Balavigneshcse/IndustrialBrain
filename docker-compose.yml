@@ -1,0 +1,29 @@
+# IndusMind services. Secrets come from .env (create it with scripts\init-env.ps1).
+#   docker compose up -d db          # database only (API runs natively for development)
+#   docker compose up -d --build     # database + API container
+name: indusmind
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-indusmind}
+      POSTGRES_USER: ${POSTGRES_USER:-indusmind}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (run scripts/init-env.ps1)}
+    # Host port 5433: 5432 is often taken by a local PostgreSQL install.
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    command: ["postgres", "-c", "shared_buffers=256MB", "-c", "max_connections=50"]
+    shm_size: 256mb
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:

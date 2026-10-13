@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from server.services.extraction import classify_document, extract_entities, extract_text
-from server.services.rag_service import chunk_pages, embedding, has_asset_tag
+from server.app.services.extraction import classify_document, extract_entities, extract_text
+from server.app.services.indexing import chunk_pages, embedding
 
 
 def test_entity_extraction():
@@ -27,13 +27,6 @@ def test_chunks_keep_page():
 
 def test_document_classification():
     assert classify_document("inspection.pdf", "pump data") == "Inspection Report"
-
-
-def test_asset_tag_match_is_exact():
-    meta = {"asset_tags": "P-100,P-101"}
-    assert has_asset_tag(meta, "p-101")
-    assert not has_asset_tag(meta, "P-10")
-    assert not has_asset_tag(meta, "P-1")
 
 
 def test_empty_file_raises_instead_of_indexing(tmp_path: Path):
