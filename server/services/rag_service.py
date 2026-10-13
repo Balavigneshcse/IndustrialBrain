@@ -271,13 +271,15 @@ class RAGService:
                 "local-model", 0.0,
             )
 
-        # Extract entities from evidence
+        # Extract entities from primary evidence only to avoid cross-contamination
         failures, actions, measurements, sources = set(), set(), set(), set()
+        primary_source = evidence[0]["metadata"].get("source", "")
         for item in evidence:
             meta = item["metadata"]
-            failures.update(filter(None, meta.get("failures", "").split(",")))
-            actions.update(filter(None, meta.get("actions", "").split(",")))
-            measurements.update(filter(None, meta.get("measurements", "").split(",")))
+            if meta.get("source", "") == primary_source:
+                failures.update(filter(None, meta.get("failures", "").split(",")))
+                actions.update(filter(None, meta.get("actions", "").split(",")))
+                measurements.update(filter(None, meta.get("measurements", "").split(",")))
             sources.add(meta.get("source", ""))
 
         confidence = min(0.94, 0.55 + len(evidence) * 0.035 + evidence[0]["score"] * 0.22)
