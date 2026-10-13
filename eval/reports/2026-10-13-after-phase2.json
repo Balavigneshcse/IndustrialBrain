@@ -1,0 +1,332 @@
+{
+  "label": "after-phase2",
+  "date": "2026-10-13",
+  "base_url": "http://127.0.0.1:8010",
+  "summary": {
+    "retrieval_hit_rate": "9/9",
+    "top1_source_correct": "8/9",
+    "answer_pass": "8/10",
+    "correct_refusals": "2/3",
+    "false_refusals": 0,
+    "endpoint_checks": "4/4",
+    "median_latency_ms": 516
+  },
+  "uploads": [
+    {
+      "file": "compressor-c201-maintenance.txt",
+      "http": 202,
+      "id": "1",
+      "status": "ready"
+    },
+    {
+      "file": "operating-readings.csv",
+      "http": 202,
+      "id": "2",
+      "status": "ready"
+    },
+    {
+      "file": "pump-p101-inspection-report.txt",
+      "http": 202,
+      "id": "3",
+      "status": "ready"
+    },
+    {
+      "file": "pump-p101-maintenance-history.txt",
+      "http": 202,
+      "id": "4",
+      "status": "ready"
+    },
+    {
+      "file": "pump-p101-oem-manual.txt",
+      "http": 202,
+      "id": "5",
+      "status": "ready"
+    },
+    {
+      "file": "safety-sop.txt",
+      "http": 202,
+      "id": "6",
+      "status": "ready"
+    }
+  ],
+  "results": [
+    {
+      "id": "Q1",
+      "kind": "benchmark",
+      "question": "Why did Pump P-101 fail repeatedly in 2025?",
+      "http": 200,
+      "latency_ms": 545,
+      "mode": "extractive",
+      "confidence": 0.94,
+      "answer": "Based on the indexed maintenance records, observed failure modes include: bearing wear, high vibration, lubrication contamination, misalignment, overheating, pressure loss, trip. Key corrective actions: flushed, inspected, lubricated, replaced, tested, tightened.",
+      "retrieval_hit": true,
+      "top1_hit": true,
+      "answer_pass": true,
+      "refused": false,
+      "missing": [],
+      "sources": [
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-inspection-report.txt"
+      ]
+    },
+    {
+      "id": "Q2",
+      "kind": "benchmark",
+      "question": "How many major bearing events occurred for P-101?",
+      "http": 200,
+      "latency_ms": 656,
+      "mode": "extractive",
+      "confidence": 0.94,
+      "answer": "Observed failure patterns include: bearing wear, high vibration, lubrication contamination, misalignment, overheating, pressure loss, trip. Recorded maintenance actions include: flushed, inspected, lubricated, replaced, tested, tightened. Relevant measurements include: 108 C, 12 bar, 15 bar, 4.2 mm/s, 6.8 mm/s, 8.2 mm/s, 92 C. Primary evidence: Maintenance conclusion: Pump P-101 experienced three significant bearing-related events during 2025. The recurring pattern links bearing wear with lubricant contamination, misalignment, high vibration, and high temperature.",
+      "retrieval_hit": true,
+      "top1_hit": true,
+      "answer_pass": true,
+      "refused": false,
+      "missing": [],
+      "sources": [
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-maintenance-history.txt",
+        "operating-readings.csv"
+      ]
+    },
+    {
+      "id": "Q3",
+      "kind": "benchmark",
+      "question": "Which readings exceeded OEM limits?",
+      "http": 200,
+      "latency_ms": 470,
+      "mode": "extractive",
+      "confidence": 0.75,
+      "answer": "Relevant measurements include: 16 bar, 2950 rpm, 6.0 mm/s, 90 C. Primary evidence: SYNTHETIC DEMONSTRATION DATA - NOT A REAL OEM MANUAL OEM OPERATING AND MAINTENANCE GUIDE Asset family: P-100 series centrifugal process pump Applicable equipment tag: P-101 Normal operating limits: - Discharge pressure: 14 to 16 bar - Bearing temperature: below 90 C - Overall vibration: below 6.0 mm/s - Speed: 2,950 rpm",
+      "retrieval_hit": true,
+      "top1_hit": true,
+      "answer_pass": true,
+      "refused": false,
+      "missing": [],
+      "sources": [
+        "pump-p101-oem-manual.txt",
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-maintenance-history.txt",
+        "compressor-c201-maintenance.txt",
+        "pump-p101-maintenance-history.txt"
+      ]
+    },
+    {
+      "id": "Q4",
+      "kind": "benchmark",
+      "question": "What maintenance was performed on 22-Nov-2025?",
+      "http": 200,
+      "latency_ms": 516,
+      "mode": "extractive",
+      "confidence": 0.94,
+      "answer": "Observed failure patterns include: bearing wear, high vibration, lubrication contamination, misalignment, overheating, pressure loss. Recorded maintenance actions include: flushed, inspected, lubricated, replaced, tested, tightened. Relevant measurements include: 12 bar, 15 bar, 4.2 mm/s, 6.8 mm/s, 8.2 mm/s, 92 C. Primary evidence: 22-Nov-2025 Pump P-101 was stopped after vibration reached 8.2 mm/s and discharge pressure fell from 15 bar to 12 bar. The bearing showed repeated wear. Lubrication contamination and delayed seal replacement were recorded. The team replaced the bearing and mechanical seal, flushed the bearing housing, and tested the pump.",
+      "retrieval_hit": true,
+      "top1_hit": true,
+      "answer_pass": true,
+      "refused": false,
+      "missing": [],
+      "sources": [
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-inspection-report.txt",
+        "pump-p101-maintenance-history.txt",
+        "compressor-c201-maintenance.txt",
+        "pump-p101-maintenance-history.txt"
+      ]
+    },
+    {
+      "id": "Q5",
+      "kind": "benchmark",
+      "question": "What did the lubricant sample show?",
+      "http": 200,
+      "latency_ms": 563,
+      "mode": "extractive",
+      "confidence": 0.94,
+      "answer": "Observed failure patterns include: bearing wear, lubrication contamination, misalignment, seal leakage. Relevant measurements include: 15 bar, 6.0 mm/s, 78 C, 90 C. Primary evidence: SYNTHETIC DEMONSTRATION DATA - NOT A REAL OPERATIONAL RECORD APEX PETROCHEM PLANT Inspection Report IR-2025-118 Equipment: Pump P-101 Inspection Date: 24-Nov-2025 Inspector: Meera Shah Findings: 1. Drive-end bearing displayed pitting and uneven wear. 2. Lubricant sample contained water and fine metallic particles. 3. Shaft alignment was within tole",
+      "retrieval_hit": true,
+      "top1_hit": true,
+      "answer_pass": true,
+      "refused": false,
+      "missing": [],
+      "sources": [
+        "pump-p101-inspection-report.txt",
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-inspection-report.txt",
+        "pump-p101-maintenance-history.txt"
+      ]
+    },
+    {
+      "id": "Q6",
+      "kind": "benchmark",
+      "question": "What safety steps apply before pump maintenance?",
+      "http": 200,
+      "latency_ms": 529,
+      "mode": "extractive",
+      "confidence": 0.94,
+      "answer": "SYNTHETIC DEMONSTRATION DATA - NOT A REAL SAFETY PROCEDURE Safety SOP: Rotating Equipment Maintenance Before opening Pump P-101 or any rotating equipment, personnel must: 1. Obtain an approved work permit. 2. Stop the equipment using the normal shutdown sequence. 3. Isolate electrical power and apply lockout-tagout. 4. Close process isolation valves and release stored pressure. 5. Verify zero energy before beginning work. 6. Wear the specified PP",
+      "retrieval_hit": true,
+      "top1_hit": true,
+      "answer_pass": true,
+      "refused": false,
+      "missing": [],
+      "sources": [
+        "safety-sop.txt",
+        "pump-p101-oem-manual.txt",
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-inspection-report.txt",
+        "pump-p101-maintenance-history.txt"
+      ]
+    },
+    {
+      "id": "Q7",
+      "kind": "benchmark",
+      "question": "What alert thresholds were recommended?",
+      "http": 200,
+      "latency_ms": 533,
+      "mode": "extractive",
+      "confidence": 0.73,
+      "answer": "Observed failure patterns include: bearing wear, lubrication contamination, misalignment, seal leakage. Relevant measurements include: 6.0 mm/s, 90 C. Primary evidence: Probable contributors: - Lubrication contamination accelerated bearing wear. - Earlier misalignment increased vibration loading. - The seal replacement was delayed after minor leakage was first observed. Recommendations: - Inspect lubricant condition every month. - Trend vibration and bearing temperature weekly. - Set an alert at 6.0 mm/s vibration",
+      "retrieval_hit": true,
+      "top1_hit": true,
+      "answer_pass": true,
+      "refused": false,
+      "missing": [],
+      "sources": [
+        "pump-p101-inspection-report.txt",
+        "pump-p101-maintenance-history.txt",
+        "operating-readings.csv",
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-maintenance-history.txt"
+      ]
+    },
+    {
+      "id": "Q8",
+      "kind": "benchmark",
+      "question": "What was P-101 pressure after verification?",
+      "http": 200,
+      "latency_ms": 470,
+      "mode": "extractive",
+      "confidence": 0.94,
+      "answer": "Observed failure patterns include: bearing wear, high vibration, lubrication contamination, pressure loss, trip. Recorded maintenance actions include: flushed, inspected, lubricated, replaced, tested, tightened. Relevant measurements include: 108 C, 12 bar, 15 bar, 4.2 mm/s, 6.8 mm/s, 8.2 mm/s, 92 C. Primary evidence: 22-Nov-2025 Pump P-101 was stopped after vibration reached 8.2 mm/s and discharge pressure fell from 15 bar to 12 bar. The bearing showed repeated wear. Lubrication contamination and delayed seal replacement were recorded. The team replaced the bearing and mechanical seal, flushed the bearing housing, and tested the pump.",
+      "retrieval_hit": true,
+      "top1_hit": false,
+      "answer_pass": true,
+      "refused": false,
+      "missing": [],
+      "sources": [
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-inspection-report.txt",
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-oem-manual.txt"
+      ]
+    },
+    {
+      "id": "Q9",
+      "kind": "benchmark",
+      "question": "Did C-201 cause the P-101 failure?",
+      "http": 200,
+      "latency_ms": 513,
+      "mode": "extractive",
+      "confidence": 0.94,
+      "answer": "Based on the indexed maintenance records, observed failure modes include: motor trip. Key corrective actions: calibrated, cleaned, tested.",
+      "retrieval_hit": true,
+      "top1_hit": true,
+      "answer_pass": false,
+      "refused": false,
+      "missing": [
+        "no relation"
+      ],
+      "sources": [
+        "compressor-c201-maintenance.txt",
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-maintenance-history.txt",
+        "operating-readings.csv",
+        "pump-p101-maintenance-history.txt"
+      ]
+    },
+    {
+      "id": "Q10",
+      "kind": "benchmark",
+      "question": "What was the P-101 motor current?",
+      "http": 200,
+      "latency_ms": 503,
+      "mode": "extractive",
+      "confidence": 0.94,
+      "answer": "Observed failure patterns include: bearing wear, high vibration, lubrication contamination, misalignment, overheating, pressure loss, trip. Recorded maintenance actions include: flushed, inspected, lubricated, replaced, tested, tightened. Relevant measurements include: 108 C, 12 bar, 15 bar, 4.2 mm/s, 6.8 mm/s, 8.2 mm/s, 92 C. Primary evidence: 22-Nov-2025 Pump P-101 was stopped after vibration reached 8.2 mm/s and discharge pressure fell from 15 bar to 12 bar. The bearing showed repeated wear. Lubrication contamination and delayed seal replacement were recorded. The team replaced the bearing and mechanical seal, flushed the bearing housing, and tested the pump.",
+      "retrieval_hit": null,
+      "top1_hit": null,
+      "answer_pass": false,
+      "refused": false,
+      "missing": [
+        "(expected a refusal)"
+      ],
+      "sources": [
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-maintenance-history.txt",
+        "compressor-c201-maintenance.txt"
+      ]
+    },
+    {
+      "id": "P1",
+      "kind": "honesty-probe",
+      "question": "Identify risks for compressor C-300",
+      "http": 200,
+      "latency_ms": 35,
+      "mode": "extractive",
+      "confidence": 0.0,
+      "answer": "No indexed documents mention C-300, so I can't answer about it. Upload records for that equipment first.",
+      "retrieval_hit": null,
+      "top1_hit": null,
+      "answer_pass": true,
+      "refused": true,
+      "missing": [],
+      "sources": []
+    },
+    {
+      "id": "P2",
+      "kind": "honesty-probe",
+      "question": "Get me the CGPA in the resume",
+      "http": 200,
+      "latency_ms": 459,
+      "mode": "extractive",
+      "confidence": 0.0,
+      "answer": "I could not find sufficient evidence in the indexed industrial documents to answer this question. Try uploading relevant documents first.",
+      "retrieval_hit": null,
+      "top1_hit": null,
+      "answer_pass": true,
+      "refused": true,
+      "missing": [],
+      "sources": []
+    }
+  ],
+  "endpoint_checks": [
+    {
+      "check": "Asset 360 returns evidence for P-101",
+      "pass": true,
+      "detail": "HTTP 200, evidenceChunks=12"
+    },
+    {
+      "check": "RCA for P-101 has evidence-based causes",
+      "pass": true,
+      "detail": "HTTP 200, probableCauses=['bearing failure', 'bearing wear', 'cavitation', 'high vibration']"
+    },
+    {
+      "check": "Analytics lists failure modes",
+      "pass": true,
+      "detail": "HTTP 200, first=[{'failure': 'bearing wear', 'count': 4}]"
+    },
+    {
+      "check": "Unknown asset C-300 returns 404",
+      "pass": true,
+      "detail": "HTTP 404"
+    }
+  ]
+}

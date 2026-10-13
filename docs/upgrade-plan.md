@@ -309,6 +309,36 @@ Answer quality did not change: Phase 0 removed broken and dishonest behaviour, a
 - **Filters:** the asset filter is an exact SQL join. Document and type filters come only from explicit UI filters, which removes the filename hijack.
 - **Insufficient evidence:** declared when the top rerank score is below a threshold **tuned on the eval set**.
 
+**✅ Done 2026-10-13.** What was built:
+- **Background processing:** Redis + Celery worker (`server/app/workers`). Uploads return `202` with a job; progress via `GET /jobs/{id}` and an SSE stream. Without Redis, or with `CELERY_EAGER=true`, processing runs inline.
+- **Upload checks:** magic-byte type check (`415`), SHA-256 de-duplication (`409`), size cap (`413`). The worker image includes Tesseract and Poppler for OCR.
+- **Chunking:** split at headings and dated log entries (each maintenance entry is its own chunk), about 300 words with 45 words of overlap; tables keep the header row on every chunk.
+- **Per-chunk entities:**
+  - Subject equipment, with negated mentions excluded. This fixes the C-201 → P-101 cross-attribution.
+  - Look-alike codes (DN/PN/IP/M12/REV/UTC/"P-100 series") are ignored.
+  - ISO dates (day-first) sort chronologically.
+  - Measurements handle thousands separators, `%` and an upper-case "C".
+  - Failures and actions ignore negations and match whole words.
+  - Document types are classified from the filename and title first (6/6 sample files correct, previously 2/6).
+- **Asset events** (`asset_events`): dated failures, actions, measurements and readings, from record documents only. They drive the chronological Asset 360 timeline and event-based analytics.
+- **Asset registry** (`assets`): `GET /assets`, admin CSV import (`POST /assets/import`, CLI `import-assets`). Once a registry exists, only registered tags are recognised. Sample: `sample-data/registry/asset-registry.csv`.
+- **Retrieval:** bge-small-en-v1.5 embeddings + Postgres full text, reciprocal rank fusion, then the MiniLM-L6 cross-encoder (chosen over bge-reranker-base: better first citations, 7× faster). Relevance is the reranker probability, and `MIN_EVIDENCE_SCORE` = 0.005.
+- **Models:** fastembed ONNX on CPU, loaded offline from `data/models/fastembed`. The download script now dereferences WSL symlinks, which Windows and Docker cannot read.
+- **Rate limits and readiness:** limits are shared through Redis; readiness also checks the models, Redis and the worker heartbeat.
+- **CLI `reindex`:** your 3 documents were re-indexed (31 + 8 events, 0 from the manual).
+- **Differences from the bullets above:**
+  - GLiNER was skipped, because the rules met the targets.
+  - Units are stored as written, without `pint` conversion.
+  - The optional LLM document classification moves to Phase 3.
+  - A question that contains an exact uploaded filename (with extension) is still scoped to that file. Partial name matches no longer hijack retrieval.
+  - The evidence threshold cannot catch Q10 (a relevant asset, but the fact is absent), so that refusal is left to the LLM in Phase 3.
+- **Verified end to end:**
+  - Native API + worker through Redis: `queued → processing → ready` in about 2.4 s.
+  - Full Docker stack: a scanned image was OCR'd by the worker container into dated events.
+- **Results:**
+  - 82 tests pass.
+  - Benchmark: first citation 8/9 (was 5/9), answer facts 8/10 (was 3/10), refusals 2/3, no false refusals (`eval/reports/2026-10-13-after-phase2.md`).
+
 ### Phase 3: Generation (the LLM really answers)
 - **Ollama client:** async httpx with timeouts, 1 retry, a circuit breaker, and a global semaphore of 2. The UI shows queue position.
 - **Prompts** are versioned files:

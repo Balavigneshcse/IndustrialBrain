@@ -18,7 +18,7 @@ Install Python 3.11 or 3.12 with **Add Python to PATH** enabled, reopen the term
 
 ## "Docker is not running" or the database does not start
 
-Start Docker Desktop, wait until it says it is running, then run `scripts\start-db.ps1`. To see what went wrong, run `docker compose logs db`.
+Start Docker Desktop, wait until it says it is running, then run `scripts\start-services.ps1` (database and Redis). To see what went wrong, run `docker compose logs db`.
 
 ## Port 5432 is already in use
 
@@ -43,6 +43,26 @@ If it says a migration is missing, run `.\.venv\Scripts\python.exe -m server.app
 ## The tests cannot connect to PostgreSQL
 
 The tests create their own database (`indusmind_test`) on the Docker database. Start it with `docker compose up -d db`.
+
+## Uploads stay "queued"
+
+No worker is processing the queue. `/api/v1/health/ready` then shows `worker: error` ("no heartbeat"). Start it with `scripts\start-all.ps1`, or manually:
+
+```powershell
+.\.venv\Scripts\python.exe -m celery -A server.app.workers.celery_app worker --pool=threads --concurrency=2 -Q indusmind --loglevel=INFO
+```
+
+For a quick check without a worker, set `CELERY_EAGER=true` (or unset `REDIS_URL`), and uploads are processed inside the API.
+
+## Readiness says `models: error`
+
+The retrieval models are missing from `data/models/fastembed`. Run `wsl -d Ubuntu -- bash ml/setup/03_download_models_data.sh`, or copy the folder from a teammate.
+
+If the folder exists but Windows cannot read the files (OSError), they are WSL symlinks from an older download. Re-run the script: it now replaces the symlinks with real files.
+
+## Search found nothing for an older document
+
+Documents indexed before Phase 2 used the old hashed vectors. Run `.\.venv\Scripts\python.exe -m server.app.cli reindex` once.
 
 ## An upload shows FAILED
 

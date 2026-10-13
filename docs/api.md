@@ -16,6 +16,8 @@ The Phase 4 frontend generates its client from that contract. The old unversione
   - chat: 20 per user
   - upload: 30 per user
 
+  Counters are shared through Redis when it is configured.
+
 ## Roles
 
 | Action | viewer | engineer | admin |
@@ -50,31 +52,45 @@ Access tokens last 15 minutes. Any password change or reset invalidates previous
 
 | Method and path | Purpose |
 |---|---|
-| `GET /api/v1/documents?limit=&offset=` | Newest first. Each item has `status` (`ready`, `failed` or `processing`) and `errorMessage`. |
-| `POST /api/v1/documents/upload` | Multipart, field `file`, up to `MAX_UPLOAD_MB` (default 50; `413` beyond). Accepts PDF, DOCX, TXT, CSV, XLSX, PPTX, HTML, EML and images (OCR). Unreadable files return `status: "failed"` with a reason and are not indexed. |
-| `DELETE /api/v1/documents/{id}` | Removes the record, its indexed chunks and the stored file. |
+| `POST /api/v1/documents/upload` | Multipart, field `file`. Returns **`202`** with the document (`status: "queued"`) and a `jobId`; a worker processes it in the background. Errors: `415` disallowed type or content that doesn't match its extension (allowed: PDF, DOCX, XLSX, PPTX, TXT, CSV, MD, JSON, XML, HTML, EML, PNG, JPG, TIFF, BMP); `413` over `MAX_UPLOAD_MB` (default 50); `409` the same file (SHA-256) was already uploaded, with `documentId` of the existing one. |
+| `GET /api/v1/documents?limit=&offset=` | Newest first. `status` is `queued`, `processing`, `ready` or `failed` (with `errorMessage`); `chunkCount`. |
+| `GET /api/v1/documents/{id}` | One document, with the `jobId` of its latest job. |
+| `GET /api/v1/documents/{id}/events` | **Server-Sent Events**: a `status` event (`{status, progress, errorMessage}`) on every change, until `ready`/`failed`. |
+| `POST /api/v1/documents/{id}/reindex` | Re-run extraction and indexing (`202` + `jobId`). Own documents, or any as admin. `409` if already processing. |
+| `DELETE /api/v1/documents/{id}` | Removes the record, its chunks, events and jobs, and the stored file. |
+| `GET /api/v1/jobs/{id}` | `{kind, status: queued \| running \| succeeded \| failed, progress 0-100, error, documentId, timestamps}`. |
+
+Processing extracts text (with OCR for scans and images) and splits it at headings and dated log entries. It tags each chunk with its subject equipment (negated mentions such as "no relation to P-101" are excluded), derives dated asset events from record documents, and embeds every chunk.
 
 ## Chat
 
 | Method and path | Purpose |
 |---|---|
-| `POST /api/v1/chat/query` | Body `{question, assetTag?, desiredFormat?}`. Returns `{answer, mode, format, confidence, citations[], assetTag, queryId}`. `mode` is `extractive` (no language model yet) or `assistant` (greetings). Questions naming an asset no document mentions get an explicit "no indexed documents mention …" answer. |
+| `POST /api/v1/chat/query` | Body `{question, assetTag?, desiredFormat?}`. Returns `{answer, mode, format, confidence, citations[], assetTag, queryId}`. |
 | `PATCH /api/v1/chat/{queryId}/feedback` | Body `{feedback: 1 \| -1 \| null}`, only on your own answers (or as admin). |
+
+About the chat response:
+- **`mode`** is `extractive` (no language model yet) or `assistant` (greetings).
+- **`citations[].relevance`** is the reranker's relevance probability (0–1), highest first.
+- **Insufficient evidence:** if even the best passage is below `MIN_EVIDENCE_SCORE`, the answer says so and has no citations.
+- **Unknown assets:** questions naming an asset no document mentions get an explicit "no indexed documents mention …" answer.
 
 ## Assets, RCA, analytics, dashboard
 
 | Method and path | Purpose |
 |---|---|
-| `GET /api/v1/assets/{tag}` | Asset 360 evidence (exact tag match; `404` if none). |
-| `POST /api/v1/rca/{tag}` | RCA brief (engineer or admin). |
+| `GET /api/v1/assets` | Equipment from the registry plus tags found in documents: `{tag, name, assetClass, location, criticality, inRegistry, documentCount, failureEvents, lastEventDate}`. |
+| `POST /api/v1/assets/import` | Admin. Multipart CSV with header `tag,name,class,location,criticality,manufacturer,notes` (criticality A/B/C or high/medium/low). Upserts and returns `{created, updated, skipped[]}`. Once a registry exists, only registered tags are recognised in documents, so re-index afterwards. |
+| `GET /api/v1/assets/{tag}` | Asset 360: registry fields; `timeline` (dated events grouped by date and source, oldest first); `events[]` (`date, kind: failure \| action \| measurement \| reading, label, value, unit, detail, source`); failures, actions, measurements and sources. `404` if nothing is indexed for the tag. |
+| `POST /api/v1/rca/{tag}` | RCA brief built from the chunks whose subject is the asset (engineer or admin). |
 | `GET /api/v1/rca/export/{tag}` | The same brief as `.docx`. |
-| `GET /api/v1/analytics` | Failure and action term mentions, assets ranked by failure mentions. |
-| `GET /api/v1/dashboard` | Counts, asset tags, recent questions. |
+| `GET /api/v1/analytics` | Distinct failure and action **events** (asset, date, label), and assets ranked by failure events. |
+| `GET /api/v1/dashboard` | Counts, asset tags (registry plus discovered), recent questions. |
 
 ## Health and metrics (no auth)
 
 | Path | Purpose |
 |---|---|
 | `GET /api/v1/health/live` | The process is up. |
-| `GET /api/v1/health/ready` | Database, pgvector and uploads are usable (`503` with per-check detail if not). |
+| `GET /api/v1/health/ready` | Database, pgvector, uploads, retrieval models, Redis and a live worker (heartbeat within 30 s); `503` with per-check detail if not. In inline mode Redis/worker report `inline`. |
 | `GET /metrics` | Prometheus metrics. |

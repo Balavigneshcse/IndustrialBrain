@@ -59,3 +59,24 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\eval\serve_and_eval.ps
 | `2026-10-13-baseline-original` | 5/9 | 3/10 | 0/3 | 2/4 |
 | `2026-10-13-after-phase0` | 5/9 | 3/10 | 1/3 | 4/4 |
 | `2026-10-13-after-phase1` | 5/9 | 3/10 | 1/3 | 4/4 (answers identical to Phase 0) |
+| `2026-10-13-after-phase2` | **8/9** | **8/10** | **2/3** | 4/4 (no false refusals) |
+
+Phase 2 replaced hashed bag-of-words vectors with hybrid retrieval (bge-small vectors plus Postgres full text, fused, then reranked), structure-aware chunks and per-chunk entities. The remaining misses need a language model (Phase 3):
+- **Q9:** the extractive template cannot phrase "no relation".
+- **Q10:** recognising that a specific fact, motor current, is absent from relevant P-101 evidence.
+
+### Reranker choice and evidence threshold (Phase 2)
+
+Top reranker probability per question on this corpus:
+
+| Question | MiniLM-L6 (chosen) | bge-reranker-base |
+|---|---|---|
+| Answerable, worded like the text (Q1, Q2, Q4–Q6, Q8, Q9) | 0.96 – 1.00 | 0.17 – 1.00 |
+| Answerable, worded differently (Q3, Q7) | 0.108, 0.007 | 0.036, 0.009 |
+| Q10 (motor current, not recorded) | 0.956 | 0.046 |
+| P2 (CGPA, out of corpus) | 0.000 | 0.001 |
+| First citation correct | 8/9 | 7/9 |
+| Time for 21 pairs (CPU) | 83 ms | 604 ms |
+
+- **Threshold:** neither reranker separates Q10 from the correctly answerable Q3 and Q7 by score. So `MIN_EVIDENCE_SCORE` is 0.005: it rejects only clearly unrelated questions and causes no false refusals.
+- **Fact-level refusals** ("this fact is not in the evidence") are left to the language model in Phase 3.

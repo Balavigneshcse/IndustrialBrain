@@ -2,14 +2,15 @@
 
 **Industrial asset intelligence and root-cause analysis copilot.** IndusMind turns fragmented maintenance records, inspection reports, OEM manuals, safety procedures and operating data into a searchable evidence layer. It answers questions with source citations, builds an Asset 360° view, and drafts evidence-linked RCA briefs. Everything runs locally.
 
-> **Project status:** the production upgrade is in progress ([docs/upgrade-plan.md](docs/upgrade-plan.md)). Phases 0–1 are done: a PostgreSQL + pgvector backend, migrations, role-based accounts and a typed `/api/v1` contract.
+> **Project status:** the production upgrade is in progress ([docs/upgrade-plan.md](docs/upgrade-plan.md)). Phases 0–2 are done: a PostgreSQL + pgvector backend with role-based accounts, background document processing, and hybrid semantic search with reranking.
 >
-> Answers are currently **extractive** (assembled from the retrieved evidence, with no language model yet). Semantic search, the fine-tuned Qwen3-4B model and the rebuilt UI arrive in Phases 2–5.
+> Answers are currently **extractive** (assembled from the retrieved evidence, with no language model yet). The fine-tuned Qwen3-4B model and the rebuilt UI arrive in Phases 3–5.
 
 ## Features
 
-- **Evidence search with citations:** every answer cites its source document, page and excerpt.
-- **Asset 360°:** failures, measurements, maintenance actions, dates and sources for an equipment tag.
+- **Evidence search with citations:** hybrid semantic + keyword search with a cross-encoder reranker. Every answer cites its source document, page, excerpt and relevance.
+- **Background processing:** uploads are queued and processed by a worker (OCR for scans and images). You can follow live progress.
+- **Asset 360°:** a chronological timeline of dated failures, maintenance actions, measurements and readings per equipment tag, plus an equipment registry.
 - **RCA briefs:** observed problem, probable causes, recorded actions, investigation steps and evidence, with DOCX export.
 - **Honest answers:** questions about equipment that no document mentions are refused, not guessed.
 - **Accounts and roles:** viewer, engineer and admin, with short-lived tokens, lockout, rate limits and an audit log.
@@ -17,7 +18,7 @@
 
 ## Quick start (Windows)
 
-Requirements: Docker Desktop (running), Python 3.11 or 3.12, Node.js LTS.
+Requirements: Docker Desktop (running), Python 3.11 or 3.12, Node.js LTS, and the retrieval models in `data/models/fastembed` (downloaded by `ml/setup/03_download_models_data.sh`; see [docs/setup.md](docs/setup.md)).
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1
@@ -47,10 +48,11 @@ Manual setup, the API container, admin commands and configuration are covered in
 | Layer | Stack |
 |---|---|
 | Backend | Python, FastAPI, async SQLAlchemy 2, Alembic, Argon2id, JWT + rotating refresh cookies |
-| Data | PostgreSQL 17 + pgvector (HNSW vectors, full-text index) |
+| Data | PostgreSQL 17 + pgvector (HNSW vectors, full-text index), Redis (job queue) |
+| Retrieval | bge-small embeddings + MiniLM cross-encoder (ONNX on CPU via fastembed), Celery worker, Tesseract OCR |
 | Frontend | React 19, TypeScript, Vite |
 | Operations | Docker Compose, structured JSON logs, Prometheus metrics, health probes |
-| AI (planned) | Qwen3-4B-Instruct fine-tuned with QLoRA, served by Ollama; bge-small embeddings and a reranker |
+| AI (planned) | Qwen3-4B-Instruct fine-tuned with QLoRA, served by Ollama (Phases 3 and 5) |
 
 ## Project structure
 
