@@ -2,7 +2,24 @@ import { Session, DashboardData, DocumentRecord, ChatAnswer, AnswerFormat, Asset
 
 const API_BASE = '/api';
 
-async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+let refreshing: Promise<boolean> | null = null;
+
+// Access tokens live 15 minutes; the httpOnly refresh cookie gets a new one. Concurrent 401s share
+// one refresh call, because each refresh rotates the cookie.
+function refreshSession(): Promise<boolean> {
+  refreshing ??= fetch(`${API_BASE}/auth/refresh`, { method: 'POST', credentials: 'same-origin' })
+    .then(async res => {
+      if (!res.ok) return false;
+      const session = await res.json();
+      localStorage.setItem('token', session.token);
+      return true;
+    })
+    .catch(() => false)
+    .finally(() => { refreshing = null; });
+  return refreshing;
+}
+
+async function fetchApi<T>(endpoint: string, options: RequestInit = {}, retried = false): Promise<T> {
   const isFormData = options.body instanceof FormData;
 
   const headers: Record<string, string> = {};
@@ -15,8 +32,12 @@ async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise
     headers: { ...headers, ...(options.headers as Record<string, string>) }
   });
 
+  if (res.status === 401 && token && !retried && await refreshSession()) {
+    return fetchApi<T>(endpoint, options, true);
+  }
+
   if (!res.ok) {
-    // Expired or invalid session: drop it and go back to the login screen.
+    // Session could not be refreshed: drop it and go back to the login screen.
     if (res.status === 401 && token) {
       localStorage.removeItem('token');
       localStorage.removeItem('username');
