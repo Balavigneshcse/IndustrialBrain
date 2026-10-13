@@ -1,0 +1,3 @@
+tag,name,class,location,criticality,manufacturer,notes
+P-101,Boiler feed pump,Centrifugal pump,Boiler Feed Section A,A,Synthetic Pumps Ltd,SYNTHETIC DEMONSTRATION DATA
+C-201,Instrument air compressor,Screw compressor,Utilities Area,B,Synthetic Compressors Ltd,SYNTHETIC DEMONSTRATION DATA

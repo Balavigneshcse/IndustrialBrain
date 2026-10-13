@@ -61,7 +61,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onUpload }) => {
         <div>
           <div style={{ fontSize: '3rem', marginBottom: '1rem', color: 'var(--text-secondary)' }}>⇪</div>
           <h3 style={{ marginBottom: '0.5rem', fontSize: '1.25rem' }}>Drag & drop document here</h3>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Supports PDF, DOCX, TXT. Up to 50MB.</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>PDF, Word, Excel, PowerPoint, text, CSV, HTML, e-mail and images (OCR). Up to 50 MB.</p>
         </div>
       )}
     </div>

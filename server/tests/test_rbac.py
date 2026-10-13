@@ -1,4 +1,6 @@
 """Role-based access: viewer reads, engineer uploads and deletes own documents, admin manages users."""
+import uuid
+
 import pytest
 
 V1 = "/api/v1"
@@ -9,7 +11,9 @@ def as_user(client, login):
     return {name: login(client, name) for name in ("viewer", "engineer", "engineer2")}
 
 
-def upload(client, headers, name="note.txt", body=b"Valve V-901 inspected and tested."):
+def upload(client, headers, name="note.txt", body: bytes | None = None):
+    # Unique content per call: identical files are rejected as duplicates.
+    body = body or f"Valve V-901 inspected and tested. Ref {uuid.uuid4().hex}".encode()
     return client.post(f"{V1}/documents/upload", headers=headers, files={"file": (name, body)})
 
 

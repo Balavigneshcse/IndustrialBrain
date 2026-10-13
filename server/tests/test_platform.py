@@ -27,8 +27,10 @@ def test_health_endpoints(client):
     assert client.get(f"{V1}/health/live").status_code == 200
     ready = client.get(f"{V1}/health/ready")
     assert ready.status_code == 200
-    assert {name: check["status"] for name, check in ready.json()["checks"].items()} == {
-        "database": "ok", "pgvector": "ok", "uploads": "ok"}
+    checks = ready.json()["checks"]
+    assert {name: check["status"] for name, check in checks.items()} == {
+        "database": "ok", "pgvector": "ok", "uploads": "ok", "models": "ok", "redis": "ok", "worker": "ok"}
+    assert "inline" in checks["worker"]["detail"]  # tests run without Redis
 
 
 def test_metrics_are_exposed(client):

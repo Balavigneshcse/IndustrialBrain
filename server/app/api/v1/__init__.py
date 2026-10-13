@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from . import auth, chat, documents, health, insights, users
+from . import assets, auth, chat, documents, health, insights, jobs, users
 
 api_router = APIRouter()
-for module in (health, auth, users, documents, chat, insights):
+for module in (health, auth, users, documents, jobs, chat, assets, insights):
     api_router.include_router(module.router)

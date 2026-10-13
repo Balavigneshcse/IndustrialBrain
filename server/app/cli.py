@@ -3,6 +3,8 @@
     python -m server.app.cli create-user --username alice --role admin --display-name "Alice"
     python -m server.app.cli seed-demo                  (development only: the README demo accounts)
     python -m server.app.cli import-legacy              (re-index documents from the old SQLite + uploads)
+    python -m server.app.cli import-assets FILE.csv     (equipment registry: tag,name,class,location,...)
+    python -m server.app.cli reindex [--document ID]    (re-extract and re-embed stored documents, inline)
     python -m server.app.cli recreate-database NAME     (development/test only: empty, migrated database)
 """
 import argparse
@@ -24,6 +26,7 @@ from .core.config import REPO_ROOT, get_settings
 from .db.models import ROLES, Document, User
 from .db.session import dispose_engine, get_sessionmaker
 from .services.ingest import ingest, stored_path
+from .services.registry import import_csv
 from .services.users import create_user, password_problem
 
 DEMO_USERS = [
@@ -114,6 +117,40 @@ async def cmd_import_legacy(args) -> None:
     print(f"Imported {imported} of {len(rows)} legacy documents.")
 
 
+async def cmd_import_assets(args) -> None:
+    path = Path(args.file)
+    if not path.is_file():
+        _fail(f"{path} not found")
+    async with get_sessionmaker()() as session:
+        try:
+            created, updated, skipped = await import_csv(session, path.read_bytes())
+        except ValueError as exc:
+            _fail(str(exc))
+        await session.commit()
+    print(f"Registry: {created} created, {updated} updated, {len(skipped)} skipped.")
+    for line in skipped:
+        print(f"  skipped {line}")
+    print("Run `python -m server.app.cli reindex` so documents use the registry.")
+
+
+async def cmd_reindex(args) -> None:
+    """Re-run extraction, tagging, events and embeddings for stored documents (inline, no worker)."""
+    async with get_sessionmaker()() as session:
+        stmt = select(Document).order_by(Document.id)
+        if args.document:
+            stmt = stmt.where(Document.id == args.document)
+        documents = list((await session.execute(stmt)).scalars())
+        for doc in documents:
+            if not stored_path(doc).is_file():
+                print(f"  skip   {doc.original_name}: stored file missing")
+                continue
+            doc.status = "processing"
+            await ingest(session, doc)
+            await session.commit()
+            print(f"  {doc.status:6} {doc.original_name}: {doc.summary or doc.error_message}")
+    print(f"Re-indexed {len(documents)} document(s).")
+
+
 async def cmd_recreate_database(args) -> None:
     settings = get_settings()
     if settings.indusmind_env == "production":
@@ -162,6 +199,14 @@ def main() -> None:
     p.add_argument("--uploads", default=str(REPO_ROOT / "data" / "uploads"))
     p.add_argument("--as-user", default="admin", help="owner recorded for the imported documents")
     p.set_defaults(handler=cmd_import_legacy)
+
+    p = sub.add_parser("import-assets", help="import the equipment registry from CSV")
+    p.add_argument("file")
+    p.set_defaults(handler=cmd_import_assets)
+
+    p = sub.add_parser("reindex", help="re-extract and re-embed stored documents (inline)")
+    p.add_argument("--document", type=int, help="only this document id")
+    p.set_defaults(handler=cmd_reindex)
 
     p = sub.add_parser("recreate-database", help="drop, create and migrate a scratch database (not in production)")
     p.add_argument("name")

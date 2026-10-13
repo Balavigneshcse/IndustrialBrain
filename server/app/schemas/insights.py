@@ -1,5 +1,6 @@
 """Asset 360, RCA, analytics and dashboard responses."""
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -10,15 +11,50 @@ class TimelineEvent(BaseModel):
     summary: str
 
 
+class AssetEventOut(BaseModel):
+    date: str | None  # ISO date; null when the record gives none
+    kind: Literal["failure", "action", "measurement", "reading"]
+    label: str
+    value: float | None
+    unit: str | None
+    detail: str
+    source: str
+
+
 class AssetOut(BaseModel):
     tag: str
+    name: str | None = None
+    assetClass: str | None = None
+    location: str | None = None
+    criticality: str | None = None
+    inRegistry: bool = False
     sources: list[str]
     failures: list[str]
     maintenanceActions: list[str]
     dates: list[str]
     measurements: list[str]
-    timeline: list[TimelineEvent]
+    timeline: list[TimelineEvent]  # dated events grouped per date and document, oldest first
+    events: list[AssetEventOut] = []
     evidenceChunks: int
+
+
+class AssetSummary(BaseModel):
+    tag: str
+    name: str
+    assetClass: str
+    location: str
+    criticality: str
+    inRegistry: bool
+    documentCount: int
+    failureEvents: int
+    lastEventDate: str | None
+
+
+class AssetImportResult(BaseModel):
+    created: int
+    updated: int
+    skipped: list[str]
+    hint: str
 
 
 class RcaCitation(BaseModel):

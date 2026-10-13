@@ -54,7 +54,7 @@ def generate_answer(question: str, evidence: list[dict],
             "assistant", 1.0,
         )
 
-    if not evidence or evidence[0]["score"] < 0.01:
+    if not evidence:  # the relevance threshold is applied by the caller (settings.min_evidence_score)
         return INSUFFICIENT_EVIDENCE, ANSWER_MODE, 0.0
 
     # Extract entities from primary evidence only to avoid cross-contamination

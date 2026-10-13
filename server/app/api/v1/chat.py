@@ -10,8 +10,8 @@ from ...db.models import QueryLog
 from ...schemas.chat import ChatAnswer, ChatQueryRequest, Citation, FeedbackRequest
 from ...schemas.common import ERROR_RESPONSES, Ok, Problem
 from ...services import store
-from ...services.answers import ANSWER_MODE, generate_answer
-from ...services.extraction import extract_entities
+from ...services.answers import ANSWER_MODE, INSUFFICIENT_EVIDENCE, classify_query, generate_answer
+from ...services.entities import extract_entities
 from ..deps import CurrentUser, SessionDep
 
 router = APIRouter(prefix="/chat", tags=["chat"], responses={401: ERROR_RESPONSES[401]})
@@ -19,7 +19,8 @@ router = APIRouter(prefix="/chat", tags=["chat"], responses={401: ERROR_RESPONSE
 
 @router.post("/query", response_model=ChatAnswer, responses={429: ERROR_RESPONSES[429]})
 async def chat_query(body: ChatQueryRequest, session: SessionDep, user: CurrentUser) -> ChatAnswer:
-    limiter.check(f"chat:{user.id}", get_settings().chat_rate_per_minute)
+    settings = get_settings()
+    limiter.check(f"chat:{user.id}", settings.chat_rate_per_minute)
     started = time.perf_counter()
     question = body.question.strip()
     asset_tag = (body.assetTag or "").strip()
@@ -41,14 +42,19 @@ async def chat_query(body: ChatQueryRequest, session: SessionDep, user: CurrentU
         )
     else:
         evidence = await store.search(session, question, asset_tag, limit=5)
-        answer_text, mode, confidence = await run_in_threadpool(generate_answer, question, evidence, desired_format)
+        weak = not evidence or evidence[0]["score"] < settings.min_evidence_score
+        if weak and classify_query(question) != "greeting":
+            # The reranker found nothing relevant enough: say so instead of answering from weak matches.
+            evidence, answer_text, mode, confidence = [], INSUFFICIENT_EVIDENCE, ANSWER_MODE, 0.0
+        else:
+            answer_text, mode, confidence = await run_in_threadpool(generate_answer, question, evidence, desired_format)
 
     citations = [
         Citation(
             docId=str(item["metadata"]["document_id"]), filename=item["metadata"]["source"],
             source=item["metadata"]["source"], page=item["metadata"]["page"],
             documentType=item["metadata"]["document_type"], excerpt=item["text"][:360],
-            textSnippet=item["text"][:360], relevance=round(min(0.97, 0.5 + item["score"] * 0.45), 2),
+            textSnippet=item["text"][:360], relevance=round(item["score"], 2),
         )
         for item in evidence
     ]

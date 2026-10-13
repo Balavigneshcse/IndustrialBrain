@@ -32,6 +32,7 @@ New-Item -ItemType Directory -Force -Path (Join-Path $Work "uploads") | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Could not recreate database $Database (is 'docker compose up -d db' running?)" }
 $env:POSTGRES_DB = $Database
 $env:UPLOAD_DIR = Join-Path $Work "uploads"
+$env:CELERY_EAGER = "true"   # process uploads inline: deterministic, no worker needed
 & $Python -m server.app.cli seed-demo | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "seed-demo failed" }
 
@@ -49,5 +50,5 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "run_eval.py failed with exit code $LASTEXITCODE" }
 } finally {
     Stop-Process -Id $Server.Id -Force -ErrorAction SilentlyContinue
-    Remove-Item Env:POSTGRES_DB, Env:UPLOAD_DIR -ErrorAction SilentlyContinue
+    Remove-Item Env:POSTGRES_DB, Env:UPLOAD_DIR, Env:CELERY_EAGER -ErrorAction SilentlyContinue
 }

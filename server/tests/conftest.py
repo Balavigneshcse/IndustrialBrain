@@ -18,6 +18,7 @@ os.environ.update({
     "LOGIN_RATE_PER_MINUTE": "1000",
     "CHAT_RATE_PER_MINUTE": "1000",
     "UPLOAD_RATE_PER_MINUTE": "1000",
+    "REDIS_URL": "",  # no broker: documents are processed inline, rate limits stay in memory
 })
 
 from sqlalchemy import text  # noqa: E402
@@ -100,7 +101,7 @@ def client(app, login):
         test_client.headers.update(login(test_client, "admin"))
         for path in sorted(p for p in SAMPLE_DATA.iterdir() if p.is_file()):
             up = test_client.post("/api/v1/documents/upload", files={"file": (path.name, path.read_bytes())})
-            assert up.status_code == 200 and up.json()["status"] == "ready", (path.name, up.text)
+            assert up.status_code == 202 and up.json()["status"] == "ready", (path.name, up.text)
         yield test_client
 
 

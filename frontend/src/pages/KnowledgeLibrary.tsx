@@ -18,7 +18,13 @@ export const KnowledgeLibrary: React.FC = () => {
   }, []);
 
   const handleUpload = async (file: File) => {
-    await api.uploadDocument(file);
+    try {
+      // Processing continues in the background; the table polls until the status is ready or failed.
+      await api.uploadDocument(file);
+    } catch (err) {
+      // e.g. duplicate file, unsupported type or too large: the server explains why
+      alert(err instanceof Error ? err.message : 'Upload failed.');
+    }
     fetchDocs();
   };
 

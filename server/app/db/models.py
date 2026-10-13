@@ -1,9 +1,9 @@
 """PostgreSQL schema. Chunks and their vectors live next to the documents they came from, so the
 relational data and the search index can never drift apart (they did with SQLite + Chroma)."""
-from datetime import datetime
+from datetime import date, datetime
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import (BigInteger, Boolean, CheckConstraint, Computed, DateTime, Float, ForeignKey, Index,
+from sqlalchemy import (BigInteger, Boolean, CheckConstraint, Computed, Date, DateTime, Float, ForeignKey, Index,
                         Integer, SmallInteger, String, Text, func, text)
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -11,6 +11,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
 
 EMBEDDING_DIM = 384
+EVENT_KINDS = ("failure", "action", "measurement", "reading")
+JOB_STATUSES = ("queued", "running", "succeeded", "failed")
 ROLES = ("admin", "engineer", "viewer")
 
 
@@ -48,7 +50,7 @@ class RefreshToken(Base):
 
 class Document(Base):
     __tablename__ = "documents"
-    __table_args__ = (CheckConstraint("status IN ('processing', 'ready', 'failed')", name="status_valid"),)
+    __table_args__ = (CheckConstraint("status IN ('queued', 'processing', 'ready', 'failed')", name="status_valid"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     public_id: Mapped[str] = mapped_column(String(36), unique=True)  # uuid; also the stored file's name
@@ -82,6 +84,8 @@ class Chunk(Base):
     document_id: Mapped[int] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), index=True)
     ordinal: Mapped[int] = mapped_column(Integer)
     page: Mapped[int] = mapped_column(Integer)
+    section: Mapped[str] = mapped_column(String(200), server_default="")
+    word_count: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     text: Mapped[str] = mapped_column(Text)
     embedding: Mapped[list[float]] = mapped_column(Vector(EMBEDDING_DIM))
     # Full-text index for keyword search (used by hybrid retrieval in Phase 2).
@@ -119,3 +123,57 @@ class AuditLog(Base):
     detail: Mapped[dict] = mapped_column(JSONB, server_default="{}")
     ip: Mapped[str | None] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class Asset(Base):
+    """Equipment registry (imported from the plant's equipment master list)."""
+    __tablename__ = "assets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tag: Mapped[str] = mapped_column(String(32), unique=True)
+    name: Mapped[str] = mapped_column(String(200), server_default="")
+    asset_class: Mapped[str] = mapped_column(String(64), server_default="")
+    location: Mapped[str] = mapped_column(String(200), server_default="")
+    criticality: Mapped[str] = mapped_column(String(16), server_default="")
+    manufacturer: Mapped[str] = mapped_column(String(128), server_default="")
+    notes: Mapped[str] = mapped_column(Text, server_default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class AssetEvent(Base):
+    """A dated failure, action, measurement or reading for one asset, with the sentence it came from."""
+    __tablename__ = "asset_events"
+    __table_args__ = (
+        CheckConstraint(f"kind IN {EVENT_KINDS}", name="kind_valid"),
+        Index("ix_asset_events_asset_tag_event_date", "asset_tag", "event_date"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    asset_tag: Mapped[str] = mapped_column(String(32))
+    event_date: Mapped[date | None] = mapped_column(Date)
+    kind: Mapped[str] = mapped_column(String(16))
+    label: Mapped[str] = mapped_column(String(128))
+    value: Mapped[float | None] = mapped_column(Float)
+    unit: Mapped[str | None] = mapped_column(String(16))
+    detail: Mapped[str] = mapped_column(Text, server_default="")
+    document_id: Mapped[int] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), index=True)
+    chunk_id: Mapped[int | None] = mapped_column(ForeignKey("chunks.id", ondelete="CASCADE"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Job(Base):
+    """Background work (document ingestion / re-indexing) with progress for the UI."""
+    __tablename__ = "jobs"
+    __table_args__ = (CheckConstraint(f"status IN {JOB_STATUSES}", name="status_valid"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    kind: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(16), server_default="queued")
+    progress: Mapped[int] = mapped_column(SmallInteger, server_default=text("0"))
+    document_id: Mapped[int | None] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), index=True)
+    error: Mapped[str | None] = mapped_column(Text)
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

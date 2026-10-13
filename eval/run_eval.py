@@ -145,7 +145,15 @@ def main() -> int:
         for file_path in sorted(p for p in Path(args.load_corpus).iterdir() if p.is_file()):
             status, body = api.upload("/api/v1/documents/upload", file_path)
             uploads.append({"file": file_path.name, "http": status,
+                            "id": body.get("id") if isinstance(body, dict) else None,
                             "status": body.get("status") if isinstance(body, dict) else body})
+        # Uploads are processed in the background: wait until each one is ready or failed.
+        deadline = time.monotonic() + 600
+        for upload in uploads:
+            while upload["id"] and upload["status"] in ("queued", "processing") and time.monotonic() < deadline:
+                time.sleep(1)
+                _, doc = api.request("GET", f"/api/v1/documents/{upload['id']}")
+                upload["status"] = doc.get("status") if isinstance(doc, dict) else upload["status"]
 
     items = [json.loads(line) for line in Path(args.benchmark).read_text(encoding="utf-8").splitlines() if line.strip()]
     results = []

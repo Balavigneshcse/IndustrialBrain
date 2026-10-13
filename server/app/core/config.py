@@ -38,12 +38,40 @@ class Settings(BaseSettings):
     lockout_minutes: int = 15
     min_password_length: int = 8
 
-    # Per-minute rate limits (in-process; moves to Redis with the worker in Phase 2)
+    # Per-minute rate limits (shared through Redis when REDIS_URL is set, otherwise per process)
     login_rate_per_minute: int = 5
     chat_rate_per_minute: int = 20
     upload_rate_per_minute: int = 30
 
+    # Background jobs. Without REDIS_URL, uploads are processed inline in the API process.
+    redis_url: str | None = None
+    celery_eager: bool | None = None  # None: eager exactly when REDIS_URL is not set
+
+    # Retrieval models (ONNX on CPU via fastembed, loaded from MODELS_DIR without network access)
+    models_dir: Path = Path("data/models/fastembed")
+    embedding_model: str = "BAAI/bge-small-en-v1.5"
+    reranker_model: str = "Xenova/ms-marco-MiniLM-L-6-v2"
+    model_threads: int | None = None
+
+    # Retrieval tuning
+    retrieval_candidates: int = 30   # per retriever (vector and keyword) before fusion
+    rerank_candidates: int = 20      # fused candidates passed to the cross-encoder
+    # Below this reranker probability the answer is "insufficient evidence". Kept low on purpose: on the
+    # benchmark, correct passages for differently-worded questions score 0.007-0.1, while unrelated
+    # questions score ~0.000. Deciding that a specific fact is absent from relevant evidence (e.g.
+    # "motor current") is left to the language model in Phase 3. See eval/README.md.
+    min_evidence_score: float = 0.005
+
     log_json: bool = True
+
+    @property
+    def jobs_eager(self) -> bool:
+        return self.celery_eager if self.celery_eager is not None else not self.redis_url
+
+    @property
+    def models_path(self) -> Path:
+        path = self.models_dir if self.models_dir.is_absolute() else REPO_ROOT / self.models_dir
+        return path.resolve()
 
     @property
     def sqlalchemy_url(self) -> str:

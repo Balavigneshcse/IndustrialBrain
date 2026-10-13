@@ -65,7 +65,7 @@ def test_short_filename_does_not_hijack_retrieval(client):
 
 
 def test_failed_extraction_is_marked_failed(client):
-    resp = client.post("/api/v1/documents/upload", files={"file": ("scan.docx", b"not really a docx")})
+    resp = client.post("/api/v1/documents/upload", files={"file": ("scan.docx", b"PK not really a docx")})
     body = resp.json()
     assert body["status"] == "failed"
     assert "DOCX extraction failed" in body["errorMessage"]
@@ -78,3 +78,19 @@ def test_delete_removes_uploaded_file(client, upload_dir):
     assert stored.exists()
     assert client.delete(f"/api/v1/documents/{body['id']}").status_code == 200
     assert not stored.exists()
+
+
+def test_rca_for_p101_no_longer_includes_the_compressor_trip(client):
+    body = client.post("/api/v1/rca/P-101").json()
+    assert "motor trip" not in body["probableCauses"]
+    assert "120 C" not in body["measurements"]
+    assert all(c["source"] != "compressor-c201-maintenance.txt" for c in body["citations"])
+
+
+def test_asset_360_timeline_is_chronological_with_per_entry_dates(client):
+    body = client.get("/api/v1/assets/P-101").json()
+    dates = [event["date"] for event in body["timeline"]]
+    assert dates == sorted(dates)
+    assert {"2025-01-12", "2025-03-18", "2025-07-04", "2025-11-22", "2025-11-24"} <= set(dates)
+    nov22 = next(e for e in body["timeline"] if e["date"] == "2025-11-22" and "maintenance" in e["source"])
+    assert "replaced" in nov22["summary"] and "flushed" in nov22["summary"]

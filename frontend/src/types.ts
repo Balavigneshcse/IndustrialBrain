@@ -14,7 +14,9 @@ export interface DocumentRecord {
   filename: string;
   contentType: string;
   size: number;
-  status: 'processing' | 'ready' | 'failed';
+  status: 'queued' | 'processing' | 'ready' | 'failed';
+  chunkCount?: number;
+  jobId?: number | null;
   documentType: string;
   assetTags: string;
   summary: string;

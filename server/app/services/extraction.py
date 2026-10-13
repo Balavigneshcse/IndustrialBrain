@@ -1,27 +1,7 @@
-"""Text extraction from industrial documents — PDF, DOCX, CSV, XLSX, PPTX, HTML, EML, images."""
-from pathlib import Path
+"""Text extraction from industrial documents: PDF (with OCR fallback), DOCX, CSV, XLSX, PPTX,
+HTML, EML and images. Entity extraction lives in entities.py."""
 import csv
-import re
-
-ASSET_PATTERN = re.compile(r"\b[A-Z]{1,4}[- ]?\d{2,4}[A-Z]?\b")
-DATE_PATTERN = re.compile(
-    r"\b(?:\d{1,2}[-/](?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[-/]\d{2,4}"
-    r"|\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{4}-\d{2}-\d{2})\b",
-    re.IGNORECASE,
-)
-MEASUREMENT_PATTERN = re.compile(
-    r"\b\d+(?:\.\d+)?\s?(?:bar|°?c|rpm|mm/s|psi|kpa|mpa|%)\b", re.IGNORECASE
-)
-FAILURE_TERMS = {
-    "bearing wear", "bearing failure", "seal leakage", "cavitation",
-    "overheating", "high vibration", "lubrication contamination",
-    "misalignment", "corrosion", "pressure loss", "motor trip",
-}
-ACTION_TERMS = {
-    "replaced", "inspected", "lubricated", "aligned", "cleaned", "tightened",
-    "overhauled", "calibrated", "tested", "flushed",
-}
-
+from pathlib import Path
 
 def extract_text(path: Path) -> tuple[str, list[dict]]:
     """Return (full_text, pages). Raises ValueError when nothing readable can be extracted,
@@ -178,39 +158,3 @@ def _eml(path: Path) -> tuple[str, list[dict]]:
     except Exception:
         text = path.read_text(encoding="utf-8", errors="ignore")
         return text, [{"page": 1, "text": text}]
-
-
-def extract_entities(text: str) -> dict:
-    lowered = text.lower()
-    asset_tags = {
-        _normalize_asset(v) for v in ASSET_PATTERN.findall(text)
-        if _normalize_asset(v).split("-", 1)[0] not in {"IR", "SOP", "OEM", "ISO", "API"}
-    }
-    return {
-        "asset_tags": sorted(asset_tags),
-        "dates": sorted(set(DATE_PATTERN.findall(text)))[:50],
-        "measurements": sorted(set(MEASUREMENT_PATTERN.findall(text)), key=str.lower)[:50],
-        "failures": sorted(term for term in FAILURE_TERMS if term in lowered),
-        "actions": sorted(term for term in ACTION_TERMS if term in lowered),
-    }
-
-
-def _normalize_asset(value: str) -> str:
-    return value.upper().replace(" ", "-")
-
-
-def classify_document(name: str, text: str) -> str:
-    value = f"{name} {text[:1000]}".lower()
-    for needle, label in [
-        ("inspection", "Inspection Report"),
-        ("incident", "Incident Report"),
-        ("maintenance", "Maintenance Record"),
-        ("operating procedure", "Standard Operating Procedure"),
-        ("sop", "Standard Operating Procedure"),
-        ("manual", "Equipment Manual"),
-        ("safety", "Safety Document"),
-        ("reading", "Operating Readings"),
-    ]:
-        if needle in value:
-            return label
-    return "Industrial Document"
