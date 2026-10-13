@@ -70,6 +70,7 @@ async def upload_document(
         "documentType": doc.document_type,
         "assetTags": doc.asset_tags,
         "summary": doc.summary,
+        "errorMessage": doc.error_message,
         "uploadedBy": doc.uploaded_by,
         "uploadedAt": str(doc.uploaded_at) if doc.uploaded_at else "",
         "uploadDate": str(doc.uploaded_at) if doc.uploaded_at else "",
@@ -108,6 +109,9 @@ def delete_document(doc_id: int, db: Session = Depends(get_db),
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     rag.delete_document(doc.document_id)
+    # Uploads are stored as <document_id><original suffix>; remove the file too.
+    stored = Path(settings.UPLOAD_DIR) / f"{doc.document_id}{Path(doc.original_name or '').suffix}"
+    stored.unlink(missing_ok=True)
     db.delete(doc)
     db.commit()
     return {"ok": True}

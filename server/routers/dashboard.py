@@ -43,7 +43,8 @@ def dashboard(db: Session = Depends(get_db), user: dict = Depends(get_current_us
         "assets": len(asset_tags),
         "queries": queries,
         "assetTags": sorted(asset_tags),
-        "aiOnline": True,
+        # True when the evidence index is reachable (no LLM is involved yet; see UPGRADE_PLAN Phase 3).
+        "aiOnline": rag.ready,
         "recentQueries": [
             {
                 "id": q.id,

@@ -6,7 +6,8 @@ from typing import Optional, List
 from ..database import get_db
 from ..models import QueryLog
 from ..security.jwt import get_current_user
-from ..services.rag_service import rag
+from ..services.extraction import extract_entities
+from ..services.rag_service import rag, ANSWER_MODE
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -35,18 +36,31 @@ def chat_query(body: ChatQueryRequest, db: Session = Depends(get_db),
     question = body.question.strip()
     asset_tag = (body.assetTag or "").strip()
 
-    # Search for evidence
-    evidence = rag.search(question, asset_tag, limit=5)
+    # Asset tags named in the question (or the tag filter) that no indexed document mentions
+    # get an explicit "no evidence" reply instead of an answer built from another asset's records.
+    requested_tags = set(extract_entities(question)["asset_tags"])
+    if asset_tag:
+        requested_tags.add(asset_tag.upper())
+    unknown_tags = sorted(requested_tags - rag.known_asset_tags()) if requested_tags else []
 
-    # Generate answer (handles greeting/document/industrial routing internally)
-    answer_text, mode, confidence = rag.generate_answer(
-        question, evidence, body.desiredFormat or "quick_answer",
-    )
+    if unknown_tags and len(unknown_tags) == len(requested_tags):
+        evidence = []
+        answer_text, mode, confidence = (
+            f"No indexed documents mention {', '.join(unknown_tags)}, so I can't answer about "
+            f"{'it' if len(unknown_tags) == 1 else 'them'}. Upload records for that equipment first.",
+            ANSWER_MODE, 0.0,
+        )
+    else:
+        evidence = rag.search(question, asset_tag, limit=5)
+        # Generate answer (handles greeting/document/industrial routing internally)
+        answer_text, mode, confidence = rag.generate_answer(
+            question, evidence, body.desiredFormat or "quick_answer",
+        )
 
     # Build citations
     citations = [
         {
-            "docId": str(item["metadata"].get("id", "")),
+            "docId": str(item["metadata"].get("document_id", "")),
             "filename": item["metadata"].get("source", "Uploaded Document"),
             "source": item["metadata"].get("source", "Uploaded Document"),
             "page": item["metadata"].get("page", 1),

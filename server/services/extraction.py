@@ -24,6 +24,17 @@ ACTION_TERMS = {
 
 
 def extract_text(path: Path) -> tuple[str, list[dict]]:
+    """Return (full_text, pages). Raises ValueError when nothing readable can be extracted,
+    so the upload is marked FAILED instead of indexing an error message as content."""
+    text, pages = _extract(path)
+    if not text.strip():
+        raise ValueError(
+            "No readable text found. Scanned PDFs and images need Tesseract OCR (set TESSERACT_CMD)."
+        )
+    return text, pages
+
+
+def _extract(path: Path) -> tuple[str, list[dict]]:
     suffix = path.suffix.lower()
     if suffix == ".pdf":
         return _pdf(path)
@@ -61,7 +72,7 @@ def _pdf(path: Path) -> tuple[str, list[dict]]:
                 full_text = "\n\n".join(ocr_text)
         return full_text, pages
     except Exception as e:
-        return f"PDF extraction failed: {e}", [{"page": 1, "text": ""}]
+        raise ValueError(f"PDF extraction failed: {e}") from e
 
 
 def _ocr_pdf(path: Path) -> list[str]:
@@ -83,7 +94,7 @@ def _docx(path: Path) -> tuple[str, list[dict]]:
         text = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
         return text, [{"page": 1, "text": text}]
     except Exception as e:
-        return f"DOCX extraction failed: {e}", [{"page": 1, "text": ""}]
+        raise ValueError(f"DOCX extraction failed: {e}") from e
 
 
 def _csv(path: Path) -> tuple[str, list[dict]]:
@@ -105,7 +116,7 @@ def _image(path: Path) -> tuple[str, list[dict]]:
         text = pytesseract.image_to_string(Image.open(str(path)))
         return text, [{"page": 1, "text": text}]
     except Exception as e:
-        return f"Image OCR failed: {e}", [{"page": 1, "text": ""}]
+        raise ValueError(f"Image OCR failed: {e}") from e
 
 
 def _xlsx(path: Path) -> tuple[str, list[dict]]:
@@ -118,7 +129,7 @@ def _xlsx(path: Path) -> tuple[str, list[dict]]:
         text = "\n".join(rows)
         return text, [{"page": 1, "text": text}]
     except Exception as e:
-        return f"Excel parsing failed: {e}", [{"page": 1, "text": ""}]
+        raise ValueError(f"Excel parsing failed: {e}") from e
 
 
 def _pptx(path: Path) -> tuple[str, list[dict]]:
@@ -137,7 +148,7 @@ def _pptx(path: Path) -> tuple[str, list[dict]]:
         full_text = "\n\n".join(item["text"] for item in pages)
         return full_text, pages
     except Exception as e:
-        return f"PPTX parsing failed: {e}", [{"page": 1, "text": ""}]
+        raise ValueError(f"PPTX parsing failed: {e}") from e
 
 
 def _html(path: Path) -> tuple[str, list[dict]]:

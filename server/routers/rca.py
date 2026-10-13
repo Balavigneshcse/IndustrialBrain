@@ -63,7 +63,7 @@ def export_rca_docx(tag: str, user: dict = Depends(get_current_user)):
         doc.add_paragraph(p, style="List Number")
 
     doc.add_paragraph("")
-    doc.add_paragraph(rca["disclaimer"]).italic = True
+    doc.add_paragraph().add_run(rca["disclaimer"]).italic = True
 
     buf = BytesIO()
     doc.save(buf)
