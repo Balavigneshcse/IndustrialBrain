@@ -33,8 +33,8 @@ ml/out/
 ml/logs/
 /models/
 
-# Retired Llama-3-8B LoRA adapter, kept on disk but out of git
-model-lora-output/
+# Training checkpoints of the (retired) Llama-3-8B LoRA adapter; the adapter itself stays tracked until Phase 5 replaces it
+model-lora-output/checkpoint-*/
 
 # Eval scratch space
 eval/.work/
