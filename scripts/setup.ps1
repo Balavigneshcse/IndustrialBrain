@@ -4,6 +4,7 @@ $Root = Split-Path -Parent $PSScriptRoot
 Write-Host "IndusMind AI setup" -ForegroundColor Cyan
 
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) { throw "Node.js LTS is required." }
+if (-not (Get-Command docker -ErrorAction SilentlyContinue)) { throw "Docker Desktop is required (it runs PostgreSQL)." }
 
 $Python = Get-Command python -ErrorAction SilentlyContinue
 if (-not $Python) {
@@ -14,6 +15,11 @@ if (-not $Python) {
     $PythonExe = "python"; $PythonArgs = @()
 }
 
+# Secrets (.env) and the database container
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "init-env.ps1")
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "start-db.ps1")
+if ($LASTEXITCODE -ne 0) { throw "Database did not start" }
+
 Push-Location "$Root\frontend"
 try {
     & npm.cmd ci
@@ -22,7 +28,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Frontend build failed" }
 } finally { Pop-Location }
 
-# Backend: FastAPI server in server/, using the root .venv that start-all.ps1 looks for.
+# Backend: FastAPI server (server/app), using the root .venv that start-all.ps1 looks for.
 Push-Location $Root
 try {
     if (-not (Test-Path ".venv\Scripts\python.exe")) {
@@ -30,6 +36,9 @@ try {
     }
     & ".\.venv\Scripts\python.exe" -m pip install -r server\requirements.txt -r server\requirements-dev.txt
     if ($LASTEXITCODE -ne 0) { throw "pip install failed" }
+    & ".\.venv\Scripts\python.exe" -m server.app.cli migrate
+    if ($LASTEXITCODE -ne 0) { throw "Database migration failed" }
+    & ".\.venv\Scripts\python.exe" -m server.app.cli seed-demo
     & ".\.venv\Scripts\python.exe" -m pytest -q
     if ($LASTEXITCODE -ne 0) { throw "Server tests failed" }
 } finally { Pop-Location }

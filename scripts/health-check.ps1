@@ -1,5 +1,5 @@
 $Checks = @(
-    @{ Name = "IndusMind API & AI Backend"; Url = "http://127.0.0.1:8000/api/health" },
+    @{ Name = "IndusMind API (database, pgvector, uploads)"; Url = "http://127.0.0.1:8000/api/v1/health/ready" },
     @{ Name = "React Frontend UI"; Url = "http://127.0.0.1:5173" }
 )
 $Failed = $false
