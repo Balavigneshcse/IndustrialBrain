@@ -24,16 +24,8 @@ function Start-IndusProcess($Name, $FilePath, $Arguments, $WorkingDirectory) {
     Write-Host "Started $Name (PID $($Process.Id))"
 }
 
-$Python = $null
-if (Test-Path (Join-Path $Root ".venv\Scripts\python.exe")) {
-    $Python = Join-Path $Root ".venv\Scripts\python.exe"
-} elseif (Test-Path (Join-Path $Root "ai-service\.venv\Scripts\python.exe")) {
-    $Python = Join-Path $Root "ai-service\.venv\Scripts\python.exe"
-} else {
-    $SysPython = Get-Command python.exe -ErrorAction SilentlyContinue
-    if ($SysPython) { $Python = $SysPython.Source }
-    else { throw "Python not found. Please make sure Python is installed and in PATH." }
-}
+$Python = Join-Path $Root ".venv\Scripts\python.exe"
+if (-not (Test-Path $Python)) { throw "Python environment not found at .venv. Run scripts\setup.ps1 first." }
 
 Write-Host "Using Python: $Python" -ForegroundColor Cyan
 

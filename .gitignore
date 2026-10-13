@@ -3,10 +3,6 @@
 *.env
 !.env.example
 
-# Java
-backend/target/
-*.class
-
 # Node
 frontend/node_modules/
 frontend/dist/
@@ -15,15 +11,13 @@ frontend/vite.config.js
 frontend/vite.config.d.ts
 
 # Python
-ai-service/.venv/
 **/__pycache__/
 *.py[cod]
 .pytest_cache/
-ai-service/local_model/
-ai-service/training_data/processed_dataset/
-model-lora-output/checkpoint-*/
+.venv/
+unsloth_compiled_cache/
 
-# Runtime data
+# Runtime data (uploads can contain personal documents; never commit them)
 data/uploads/*
 !data/uploads/.gitkeep
 data/chroma/*
@@ -32,22 +26,17 @@ data/index/*
 !data/index/.gitkeep
 data/run/
 data/*.db
-ai-service/model-lora-output/
 
-# ML datasets, model caches, training outputs and logs (downloaded or generated)
+# ML datasets (incl. ml/data/raw/legacy/), model caches, training outputs and logs
 ml/data/
 ml/out/
 ml/logs/
 models/
 
-# Large legacy artifacts kept on disk but out of git
-# (retired Llama-3-8B LoRA adapter; raw training files now live in ml/data/raw/legacy/)
+# Retired Llama-3-8B LoRA adapter, kept on disk but out of git
 model-lora-output/
-ai-service/training_data/
 
-# Local virtual environments, generated caches and eval scratch space
-.venv/
-unsloth_compiled_cache/
+# Eval scratch space
 eval/.work/
 
 # IDE / OS
