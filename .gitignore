@@ -34,6 +34,22 @@ data/run/
 data/*.db
 ai-service/model-lora-output/
 
+# ML datasets, model caches, training outputs and logs (downloaded or generated)
+ml/data/
+ml/out/
+ml/logs/
+models/
+
+# Large legacy artifacts kept on disk but out of git
+# (retired Llama-3-8B LoRA adapter; raw training files now live in ml/data/raw/legacy/)
+model-lora-output/
+ai-service/training_data/
+
+# Local virtual environments, generated caches and eval scratch space
+.venv/
+unsloth_compiled_cache/
+eval/.work/
+
 # IDE / OS
 .idea/
 .vscode/
