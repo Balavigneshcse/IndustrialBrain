@@ -26,22 +26,34 @@ export const ChatPanel: React.FC = () => {
     setLoading(true);
 
     try {
-      const res = await api.chatQuery({ question: userMsg, assetTag: assetTag || undefined, desiredFormat: format, history: newHistory });
-      setHistory([...newHistory, { role: 'ai', content: res.answer, citations: res.citations, id: res.queryId }]);
+      const res = await api.chatQuery({
+        question: userMsg,
+        assetTag: assetTag || undefined,
+        desiredFormat: format,
+        history: newHistory.map(t => ({ role: t.role, content: t.content })),
+      });
+      setHistory([...newHistory, { role: 'ai', content: res.answer, citations: res.citations, id: res.queryId, mode: res.mode }]);
     } catch (err) {
-      setHistory([...newHistory, { role: 'ai', content: 'Error communicating with AI core.' }]);
+      const reason = err instanceof Error ? err.message : 'unknown error';
+      setHistory([...newHistory, { role: 'ai', content: `Could not get an answer (${reason}).` }]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFeedback = async (id: string, fb: 1 | -1) => {
+  const handleFeedback = async (id: number, fb: 1 | -1) => {
     try {
       await api.chatFeedback(id, fb);
-    } catch (err) {}
+    } catch {
+      // Feedback is best-effort; the answer is already shown.
+    }
   };
 
-  const suggestions = ["What's the status of pump P-101?", "Summarize recent maintenance for V-200", "Identify risks for compressor C-300"];
+  const suggestions = [
+    "Why did Pump P-101 fail repeatedly in 2025?",
+    "What safety steps apply before pump maintenance?",
+    "What did the lubricant sample show?",
+  ];
 
   return (
     <div className="chat-container">
@@ -65,6 +77,11 @@ export const ChatPanel: React.FC = () => {
                 {turn.role === 'user' ? 'You' : 'IndusMind AI'}
               </div>
               <div className="chat-content">{turn.content}</div>
+              {turn.role === 'ai' && turn.mode === 'extractive' && (
+                <div className="text-xs text-muted" style={{ marginTop: '0.4rem' }}>
+                  Extractive answer: assembled from the cited evidence, no language model yet.
+                </div>
+              )}
               {turn.role === 'ai' && turn.id && (
                 <div className="chat-feedback">
                   <button className="btn btn-ghost" onClick={() => handleFeedback(turn.id!, 1)} title="Helpful">👍</button>

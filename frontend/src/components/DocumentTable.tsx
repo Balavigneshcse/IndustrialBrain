@@ -40,9 +40,17 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({ documents, onDelet
               <tr key={doc.id}>
                 <td style={{ fontWeight: 500 }}>{doc.filename}</td>
                 <td>
-                  <span className={`badge badge-${doc.status === 'ready' ? 'success' : doc.status === 'failed' ? 'danger' : 'warning'}`}>
+                  <span
+                    className={`badge badge-${doc.status === 'ready' ? 'success' : doc.status === 'failed' ? 'danger' : 'warning'}`}
+                    title={doc.errorMessage || undefined}
+                  >
                     {doc.status.toUpperCase()}
                   </span>
+                  {doc.status === 'failed' && doc.errorMessage && (
+                    <div className="text-xs" style={{ color: 'var(--accent-danger)', marginTop: '0.25rem', maxWidth: '320px' }}>
+                      {doc.errorMessage}
+                    </div>
+                  )}
                 </td>
                 <td>{new Date(doc.uploadDate).toLocaleDateString()}</td>
                 <td>{Math.round(doc.size / 1024)}</td>

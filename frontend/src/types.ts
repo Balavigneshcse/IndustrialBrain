@@ -1,3 +1,6 @@
+// These mirror the JSON the FastAPI server returns today (server/routers/*.py).
+// Phase 4 of docs/UPGRADE_PLAN.md replaces them with types generated from OpenAPI.
+
 export interface Session {
   token: string;
   username: string;
@@ -7,10 +10,25 @@ export interface Session {
 
 export interface DocumentRecord {
   id: string;
+  documentId: string;
   filename: string;
-  uploadDate: string;
-  status: 'processing' | 'ready' | 'failed';
+  contentType: string;
   size: number;
+  status: 'processing' | 'ready' | 'failed';
+  documentType: string;
+  assetTags: string;
+  summary: string;
+  errorMessage?: string | null;
+  uploadedBy: string;
+  uploadDate: string;
+}
+
+export interface RecentQuery {
+  id: number;
+  question: string;
+  mode: string;
+  confidence: number;
+  createdAt: string;
 }
 
 export interface DashboardData {
@@ -20,14 +38,18 @@ export interface DashboardData {
   queries: number;
   assetTags: string[];
   aiOnline: boolean;
-  recentQueries: string[];
+  recentQueries: RecentQuery[];
 }
 
 export interface Citation {
   docId: string;
   filename: string;
+  source: string;
   page?: number;
+  documentType: string;
+  excerpt: string;
   textSnippet: string;
+  relevance: number;
 }
 
 export type AnswerFormat = 'paragraph' | 'bullet' | 'table';
@@ -39,14 +61,21 @@ export interface ChatAnswer {
   confidence: number;
   citations: Citation[];
   assetTag?: string;
-  queryId: string;
+  queryId: number;
 }
 
 export interface ConversationTurn {
   role: 'user' | 'ai';
   content: string;
   citations?: Citation[];
-  id?: string;
+  id?: number;
+  mode?: string;
+}
+
+export interface TimelineEvent {
+  date: string;
+  source: string;
+  summary: string;
 }
 
 export interface AssetData {
@@ -55,23 +84,36 @@ export interface AssetData {
   failures: string[];
   maintenanceActions: string[];
   dates: string[];
-  measurements: Record<string, number>;
-  timeline: { date: string; event: string }[];
+  measurements: string[];
+  timeline: TimelineEvent[];
   evidenceChunks: number;
 }
 
+export interface RcaCitation {
+  source: string;
+  page: number;
+  excerpt: string;
+  relevance: number;
+}
+
 export interface RcaData {
-  tag: string;
-  rootCause: string;
-  contributingFactors: string[];
-  recommendations: string[];
-  confidenceScore: number;
+  assetTag: string;
+  observedProblem: string;
+  probableCauses: string[];
+  recordedActions: string[];
+  measurements: string[];
+  eventDates: string[];
+  recommendedInvestigation: string[];
+  preventiveActions: string[];
+  confidence: number;
+  disclaimer: string;
+  citations: RcaCitation[];
 }
 
 export interface AnalyticsData {
   totalChunks: number;
   totalAssets: number;
-  topFailureModes: { label: string; value: number }[];
-  topActions: { label: string; value: number }[];
-  assetsRankedByRisk: { tag: string; riskScore: number; lastFailure: string }[];
+  topFailureModes: { failure: string; count: number }[];
+  topActions: { action: string; count: number }[];
+  assetsRankedByRisk: { assetTag: string; failureEvents: number; topFailure: string | null; documentCount: number }[];
 }

@@ -61,3 +61,6 @@ Thumbs.db
 outputs/
 docs/rendered/
 presentation/preview/
+
+# Local Claude Code preview config
+.claude/launch.json
