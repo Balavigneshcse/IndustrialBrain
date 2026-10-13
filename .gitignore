@@ -31,7 +31,7 @@ data/*.db
 ml/data/
 ml/out/
 ml/logs/
-models/
+/models/
 
 # Retired Llama-3-8B LoRA adapter, kept on disk but out of git
 model-lora-output/
