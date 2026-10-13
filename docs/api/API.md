@@ -1,55 +1,80 @@
-# API Reference
+# API Reference (v1)
 
-FastAPI server, port 8000. Interactive documentation lives at `http://127.0.0.1:8000/docs`.
+FastAPI server on port 8000.
+- **Machine-readable contract:** `/api/v1/openapi.json`
+- **Interactive docs:** `/api/v1/docs`
 
-Every endpoint except login and health requires:
+The Phase 4 frontend generates its client from that contract. The old unversioned `/api/...` paths still work as a hidden alias for the current UI and are removed in Phase 4.
 
-```http
-Authorization: Bearer <token>
-```
+## Conventions
+
+- **Auth:** every endpoint except login, refresh, logout and health requires `Authorization: Bearer <access token>`.
+- **Errors:** RFC 7807 `application/problem+json`: `{type, title, status, detail, instance, requestId}`. Validation errors add `errors[]`.
+- **Request IDs:** every response carries `X-Request-ID`. Send your own value to correlate requests with logs.
+- **Rate limits:** `429` with `Retry-After` on exceeding the per-minute limits:
+  - login: 5 per IP
+  - chat: 20 per user
+  - upload: 30 per user
+
+## Roles
+
+| Action | viewer | engineer | admin |
+|---|---|---|---|
+| Dashboard, documents list, chat, Asset 360, analytics | ✓ | ✓ | ✓ |
+| Upload documents, generate or export RCA | – | ✓ | ✓ |
+| Delete documents | – | own | any |
+| Manage users | – | – | ✓ |
 
 ## Authentication
 
-### `POST /api/auth/login`
+| Method and path | Purpose |
+|---|---|
+| `POST /api/v1/auth/login` | Body `{username, password}`. Returns `{token, tokenType, expiresIn, username, displayName, role}` and sets the httpOnly `indusmind_refresh` cookie. `401` wrong credentials; `423` locked after 5 failures (15 minutes). |
+| `POST /api/v1/auth/refresh` | Exchanges the refresh cookie for a new access token; the cookie rotates every time. Replaying an old cookie ends all of the user's sessions. |
+| `POST /api/v1/auth/logout` | Revokes the refresh cookie (`204`). |
+| `GET /api/v1/auth/me` | The current user. |
+| `POST /api/v1/auth/change-password` | Body `{currentPassword, newPassword}`. Ends other sessions and returns fresh tokens. |
 
-```json
-{"username": "admin", "password": "Admin@123"}
-```
+Access tokens last 15 minutes. Any password change or reset invalidates previously issued tokens.
 
-Returns `token` (JWT, valid 24 h), `username`, `displayName` and `role`.
+## Users (admin)
+
+| Method and path | Purpose |
+|---|---|
+| `GET /api/v1/users` | List users. |
+| `POST /api/v1/users` | Body `{username, displayName, email?, role, password}`. Returns `201`; `409` username taken; `422` weak password (at least 8 characters, not the username). |
+| `PATCH /api/v1/users/{id}` | Body `{displayName?, email?, role?, isActive?}`. Returns `409` if this would remove the last active admin. Deactivating ends the user's sessions. |
+| `POST /api/v1/users/{id}/reset-password` | Body `{newPassword}`. Also unlocks the account and ends its sessions. |
 
 ## Documents
 
-- `GET /api/documents`: list documents with status (`ready` or `failed`) and `errorMessage`.
-- `POST /api/documents/upload`: multipart upload, field `file`. Supported: PDF, DOCX, TXT, CSV, XLSX, PPTX, HTML, EML, and images (OCR). Extraction failures return `status: "failed"` and are not indexed.
-- `DELETE /api/documents/{id}`: removes the record, its index entries and the stored file.
-
-## Dashboard
-
-- `GET /api/dashboard`: document, asset and query counts, asset tags, recent questions, and `aiOnline` (the evidence index is reachable).
+| Method and path | Purpose |
+|---|---|
+| `GET /api/v1/documents?limit=&offset=` | Newest first. Each item has `status` (`ready`, `failed` or `processing`) and `errorMessage`. |
+| `POST /api/v1/documents/upload` | Multipart, field `file`, up to `MAX_UPLOAD_MB` (default 50; `413` beyond). Accepts PDF, DOCX, TXT, CSV, XLSX, PPTX, HTML, EML and images (OCR). Unreadable files return `status: "failed"` with a reason and are not indexed. |
+| `DELETE /api/v1/documents/{id}` | Removes the record, its indexed chunks and the stored file. |
 
 ## Chat
 
-### `POST /api/chat/query`
+| Method and path | Purpose |
+|---|---|
+| `POST /api/v1/chat/query` | Body `{question, assetTag?, desiredFormat?}`. Returns `{answer, mode, format, confidence, citations[], assetTag, queryId}`. `mode` is `extractive` (no language model yet) or `assistant` (greetings). Questions naming an asset no document mentions get an explicit "no indexed documents mention …" answer. |
+| `PATCH /api/v1/chat/{queryId}/feedback` | Body `{feedback: 1 \| -1 \| null}`, only on your own answers (or as admin). |
 
-```json
-{"question": "Why did Pump P-101 fail repeatedly in 2025?", "assetTag": "P-101", "desiredFormat": "quick_answer"}
-```
+## Assets, RCA, analytics, dashboard
 
-Returns `answer`, `mode` (`extractive` or `assistant`), `confidence` (heuristic), `citations[]` and `queryId`. Questions that name an asset no indexed document mentions get an explicit "no indexed documents mention …" answer with no citations.
+| Method and path | Purpose |
+|---|---|
+| `GET /api/v1/assets/{tag}` | Asset 360 evidence (exact tag match; `404` if none). |
+| `POST /api/v1/rca/{tag}` | RCA brief (engineer or admin). |
+| `GET /api/v1/rca/export/{tag}` | The same brief as `.docx`. |
+| `GET /api/v1/analytics` | Failure and action term mentions, assets ranked by failure mentions. |
+| `GET /api/v1/dashboard` | Counts, asset tags, recent questions. |
 
-- `PATCH /api/chat/{queryId}/feedback` with body `{"feedback": 1 | -1}`.
+## Health and metrics (no auth)
 
-## Assets and RCA
-
-- `GET /api/assets/{tag}`: Asset 360 evidence (exact tag match; 404 if none).
-- `POST /api/rca/{tag}`: RCA brief (`observedProblem`, `probableCauses`, `recordedActions`, `measurements`, `eventDates`, `recommendedInvestigation`, `preventiveActions`, `confidence`, `citations`).
-- `GET /api/rca/export/{tag}`: the same brief as a `.docx` download.
-
-## Analytics
-
-- `GET /api/analytics`: top failure modes and actions (term mentions across chunks), and assets ranked by failure mentions.
-
-## Health
-
-- `GET /api/health`
+| Path | Purpose |
+|---|---|
+| `GET /api/v1/health/live` | The process is up. |
+| `GET /api/v1/health/ready` | Database, pgvector and uploads are usable (`503` with per-check detail if not). |
+| `GET /metrics` | Prometheus metrics. |

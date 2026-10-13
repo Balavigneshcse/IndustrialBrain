@@ -256,6 +256,26 @@ Answer quality did not change: Phase 0 removed broken and dishonest behaviour, a
   - `/health/ready`: checks Postgres, Redis, the Ollama model loaded via `/api/ps`, and the worker heartbeat
   - `/metrics` for Prometheus
 
+**✅ Done 2026-10-13.** What was built, and where it differs from the bullets above:
+- **App:** `server/app/` (`server.app.main:app`).
+- **Database:** PostgreSQL 17 + pgvector 0.8.7 in `docker-compose.yml` on **127.0.0.1:5433**, because 5432 is taken by a local Windows PostgreSQL. Tables: users, refresh_tokens, documents, chunks (HNSW cosine, GIN tags, generated `tsvector`), query_logs, audit_log.
+- **Migrations:** Alembic, with `alembic check` in the tests.
+- **Auth:**
+  - Argon2id passwords.
+  - 15-minute access tokens with a password-version claim, so any change or reset revokes older tokens.
+  - Rotating httpOnly refresh cookies with reuse detection and a 10-second grace window for parallel tabs.
+  - Lockout after 5 failures for 15 minutes; rate limits; audit log.
+- **Roles:** as in the matrix above. "Asset registry, reindex" arrive with Phase 2.
+- **CLI:** `create-user`, `seed-demo` (refused in production), `import-legacy` (your 3 old documents were imported), `recreate-database`, `migrate`.
+- **Contract:** all 22 operations declare response models at `/api/v1/openapi.json`. The old `/api` paths remain a hidden alias for the current UI, which now refreshes tokens silently.
+- **Errors and observability:** problem+json errors, request ids, JSON logs, security headers, `/metrics`.
+- **Readiness:** checks the database, pgvector and uploads. Redis, Ollama and worker checks are added when those components exist (Phases 2–3).
+- **Deferred to Phase 2:** Redis and the background worker. Rate limits are in-process until then, and uploads are processed in a worker thread.
+- **API container:** opt-in `full` compose profile, non-root, migrates on start.
+- **Results:**
+  - 48 tests pass.
+  - The eval on Postgres is identical to Phase 0, with every metric and all 12 answers byte-for-byte equal (`eval/reports/2026-10-13-after-phase1.md`).
+
 ### Phase 2: Ingestion and retrieval
 - **Upload:**
   - Streamed to disk with a 50 MB cap (configurable).
