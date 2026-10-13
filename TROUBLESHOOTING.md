@@ -5,45 +5,33 @@
 Use:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-all.ps1 -DemoMode
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-all.ps1
 ```
 
 ## `npm.ps1` cannot be loaded
 
 Use `npm.cmd`, as the project scripts do.
 
-## Python is not found
+## Python is not found, or start-all says `.venv` is missing
 
-Install Python 3.11 or 3.12 and enable **Add Python to PATH**. Reopen the terminal.
+Install Python 3.11 or 3.12 with **Add Python to PATH** enabled, reopen the terminal, and run `scripts\setup.ps1`.
 
-## PostgreSQL connection fails
+## The API is down
 
-Use `-DemoMode` first. For PostgreSQL, verify the service is running and check `DB_URL`, `DB_USER`, and `DB_PASSWORD`.
-
-## AI service is down
-
-Run:
+Check `http://127.0.0.1:8000/api/health`. To see startup errors, run the server in the foreground:
 
 ```powershell
-cd ai-service
-.\.venv\Scripts\python.exe run.py
+.\.venv\Scripts\python.exe -m uvicorn server.main:app --host 127.0.0.1 --port 8000
 ```
 
-Check `http://127.0.0.1:8000/ai/health`.
+## An upload shows FAILED
 
-## Scanned PDF has no text
-
-Install Tesseract OCR and Poppler, then configure `TESSERACT_CMD`. The main demo uses text documents and does not depend on OCR.
-
-## Gemini fails
-
-Remove or correct `GEMINI_API_KEY`. The system will continue in offline evidence mode.
+Hover over the badge, or read the message under it, to see the reason. Scanned PDFs and images need Tesseract OCR and Poppler, with `TESSERACT_CMD` set. The demo corpus is plain text and does not need OCR.
 
 ## Ports are already in use
 
-Stop existing Java, Node, or Python development servers, or update the configured ports.
+Run `scripts\stop-all.ps1`, or stop the Node or Python servers using ports 5173 and 8000.
 
 ## Reset demo data
 
-Stop all services, delete `data/indusmind-demo.mv.db`, and clear the contents of `data/chroma`, `data/index`, and `data/uploads` while preserving `.gitkeep` files.
-
+Stop all services, delete `data/indusmind.db`, and clear the contents of `data/chroma` and `data/uploads` while keeping the `.gitkeep` files.

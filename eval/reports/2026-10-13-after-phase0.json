@@ -1,0 +1,348 @@
+{
+  "label": "after-phase0",
+  "date": "2026-10-13",
+  "base_url": "http://127.0.0.1:8010",
+  "summary": {
+    "retrieval_hit_rate": "9/9",
+    "top1_source_correct": "5/9",
+    "answer_pass": "3/10",
+    "correct_refusals": "1/3",
+    "false_refusals": 0,
+    "endpoint_checks": "4/4",
+    "median_latency_ms": 14
+  },
+  "uploads": [
+    {
+      "file": "compressor-c201-maintenance.txt",
+      "http": 200,
+      "status": "ready"
+    },
+    {
+      "file": "operating-readings.csv",
+      "http": 200,
+      "status": "ready"
+    },
+    {
+      "file": "pump-p101-inspection-report.txt",
+      "http": 200,
+      "status": "ready"
+    },
+    {
+      "file": "pump-p101-maintenance-history.txt",
+      "http": 200,
+      "status": "ready"
+    },
+    {
+      "file": "pump-p101-oem-manual.txt",
+      "http": 200,
+      "status": "ready"
+    },
+    {
+      "file": "safety-sop.txt",
+      "http": 200,
+      "status": "ready"
+    }
+  ],
+  "results": [
+    {
+      "id": "Q1",
+      "kind": "benchmark",
+      "question": "Why did Pump P-101 fail repeatedly in 2025?",
+      "http": 200,
+      "latency_ms": 17,
+      "mode": "extractive",
+      "confidence": 0.76,
+      "answer": "Based on the indexed maintenance records, observed failure modes include: bearing wear, high vibration, lubrication contamination, misalignment. Key corrective actions: aligned, flushed, inspected, lubricated, replaced, tested, tightened.",
+      "retrieval_hit": true,
+      "top1_hit": true,
+      "answer_pass": true,
+      "refused": false,
+      "missing": [],
+      "sources": [
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-maintenance-history.txt",
+        "operating-readings.csv",
+        "compressor-c201-maintenance.txt",
+        "pump-p101-oem-manual.txt"
+      ]
+    },
+    {
+      "id": "Q2",
+      "kind": "benchmark",
+      "question": "How many major bearing events occurred for P-101?",
+      "http": 200,
+      "latency_ms": 28,
+      "mode": "extractive",
+      "confidence": 0.76,
+      "answer": "Observed failure patterns include: bearing wear, high vibration, lubrication contamination, misalignment. Recorded maintenance actions include: aligned, flushed, inspected, lubricated, replaced, tested, tightened. Relevant measurements include: 108 C, 12 bar, 15 bar, 4.2 mm/s, 6.8 mm/s, 7.6 mm/s, 8.2 mm/s, 92 C. Primary evidence: SYNTHETIC DEMONSTRATION DATA - NOT A REAL OPERATIONAL RECORD APEX PETROCHEM PLANT Maintenance History: Centrifugal Pump P-101 Location: Boiler Feed Section A 12-Jan-2025 Operator Ravi Kumar reported high vibration of 6.8 mm/s and bearing temperature of 92 C. The maintenance team inspected Pump P-101, lubricated the drive-end bearing, and tightened",
+      "retrieval_hit": true,
+      "top1_hit": true,
+      "answer_pass": false,
+      "refused": false,
+      "missing": [
+        "three"
+      ],
+      "sources": [
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-maintenance-history.txt",
+        "operating-readings.csv",
+        "pump-p101-oem-manual.txt",
+        "pump-p101-inspection-report.txt"
+      ]
+    },
+    {
+      "id": "Q3",
+      "kind": "benchmark",
+      "question": "Which readings exceeded OEM limits?",
+      "http": 200,
+      "latency_ms": 14,
+      "mode": "extractive",
+      "confidence": 0.74,
+      "answer": "Observed failure patterns include: bearing failure, cavitation, high vibration, misalignment. Relevant measurements include: 16 bar, 6.0 mm/s, 90 C, 950 rpm. Primary evidence: SYNTHETIC DEMONSTRATION DATA - NOT A REAL OEM MANUAL OEM OPERATING AND MAINTENANCE GUIDE Asset family: P-100 series centrifugal process pump Applicable equipment tag: P-101 Normal operating limits: - Discharge pressure: 14 to 16 bar - Bearing temperature: below 90 C - Overall vibration: below 6.0 mm/s - Speed: 2,950 rpm Troubleshooting: High vibrat",
+      "retrieval_hit": true,
+      "top1_hit": true,
+      "answer_pass": true,
+      "refused": false,
+      "missing": [],
+      "sources": [
+        "pump-p101-oem-manual.txt",
+        "pump-p101-maintenance-history.txt",
+        "compressor-c201-maintenance.txt",
+        "operating-readings.csv",
+        "safety-sop.txt"
+      ]
+    },
+    {
+      "id": "Q4",
+      "kind": "benchmark",
+      "question": "What maintenance was performed on 22-Nov-2025?",
+      "http": 200,
+      "latency_ms": 13,
+      "mode": "extractive",
+      "confidence": 0.75,
+      "answer": "Observed failure patterns include: motor trip. Recorded maintenance actions include: calibrated, cleaned, tested. Relevant measurements include: 120 C. Primary evidence: SYNTHETIC DEMONSTRATION DATA - NOT A REAL OPERATIONAL RECORD Compressor C-201 Maintenance Record Date: 15-Aug-2025 Location: Utilities Area Compressor C-201 experienced a motor trip after discharge temperature reached 120 C. The cooler was cleaned, the temperature sensor was calibrated, and the compressor was tested. No relation to Pump P-101 was f",
+      "retrieval_hit": true,
+      "top1_hit": false,
+      "answer_pass": false,
+      "refused": false,
+      "missing": [
+        "bearing",
+        "seal",
+        "flush"
+      ],
+      "sources": [
+        "compressor-c201-maintenance.txt",
+        "pump-p101-maintenance-history.txt",
+        "operating-readings.csv",
+        "pump-p101-inspection-report.txt",
+        "pump-p101-maintenance-history.txt"
+      ]
+    },
+    {
+      "id": "Q5",
+      "kind": "benchmark",
+      "question": "What did the lubricant sample show?",
+      "http": 200,
+      "latency_ms": 13,
+      "mode": "extractive",
+      "confidence": 0.76,
+      "answer": "Observed failure patterns include: bearing wear, high vibration, lubrication contamination, misalignment. Recorded maintenance actions include: aligned, flushed, inspected, lubricated, replaced, tested, tightened. Relevant measurements include: 108 C, 12 bar, 15 bar, 4.2 mm/s, 6.8 mm/s, 7.6 mm/s, 8.2 mm/s, 92 C. Primary evidence: SYNTHETIC DEMONSTRATION DATA - NOT A REAL OPERATIONAL RECORD APEX PETROCHEM PLANT Maintenance History: Centrifugal Pump P-101 Location: Boiler Feed Section A 12-Jan-2025 Operator Ravi Kumar reported high vibration of 6.8 mm/s and bearing temperature of 92 C. The maintenance team inspected Pump P-101, lubricated the drive-end bearing, and tightened",
+      "retrieval_hit": true,
+      "top1_hit": false,
+      "answer_pass": false,
+      "refused": false,
+      "missing": [
+        "water",
+        "metallic"
+      ],
+      "sources": [
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-maintenance-history.txt",
+        "safety-sop.txt",
+        "compressor-c201-maintenance.txt",
+        "pump-p101-inspection-report.txt"
+      ]
+    },
+    {
+      "id": "Q6",
+      "kind": "benchmark",
+      "question": "What safety steps apply before pump maintenance?",
+      "http": 200,
+      "latency_ms": 13,
+      "mode": "extractive",
+      "confidence": 0.79,
+      "answer": "SYNTHETIC DEMONSTRATION DATA - NOT A REAL SAFETY PROCEDURE Safety SOP: Rotating Equipment Maintenance Before opening Pump P-101 or any rotating equipment, personnel must: 1. Obtain an approved work permit. 2. Stop the equipment using the normal shutdown sequence. 3. Isolate electrical power and apply lockout-tagout. 4. Close process isolation valves and release stored pressure. 5. Verify zero energy before beginning work. 6. Wear the specified PP",
+      "retrieval_hit": true,
+      "top1_hit": true,
+      "answer_pass": true,
+      "refused": false,
+      "missing": [],
+      "sources": [
+        "safety-sop.txt",
+        "pump-p101-oem-manual.txt",
+        "compressor-c201-maintenance.txt",
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-maintenance-history.txt"
+      ]
+    },
+    {
+      "id": "Q7",
+      "kind": "benchmark",
+      "question": "What alert thresholds were recommended?",
+      "http": 200,
+      "latency_ms": 12,
+      "mode": "extractive",
+      "confidence": 0.75,
+      "answer": "date | asset_tag | vibration_mm_s | bearing_temperature_c | discharge_pressure_bar | status 2025-01-12 | P-101 | 6.8 | 92 | 14.5 | Alert 2025-03-18 | P-101 | 7.9 | 108 | 12.8 | Trip 2025-07-04 | P-101 | 7.6 | 96 | 14.0 | Maintenance 2025-11-22 | P-101 | 8.2 | 104 | 12.0 | Shutdown 2025-11-24 | P-101 | 3.9 | 78 | 15.0 | Normal 2025-08-15 | C-201 | 4.1 | 120 | 8.5 | Trip",
+      "retrieval_hit": true,
+      "top1_hit": false,
+      "answer_pass": false,
+      "refused": false,
+      "missing": [
+        "6.0 mm/s",
+        "90 c"
+      ],
+      "sources": [
+        "operating-readings.csv",
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-inspection-report.txt",
+        "compressor-c201-maintenance.txt",
+        "pump-p101-maintenance-history.txt"
+      ]
+    },
+    {
+      "id": "Q8",
+      "kind": "benchmark",
+      "question": "What was P-101 pressure after verification?",
+      "http": 200,
+      "latency_ms": 28,
+      "mode": "extractive",
+      "confidence": 0.78,
+      "answer": "Observed failure patterns include: motor trip. Recorded maintenance actions include: calibrated, cleaned, tested. Relevant measurements include: 120 C. Primary evidence: SYNTHETIC DEMONSTRATION DATA - NOT A REAL OPERATIONAL RECORD Compressor C-201 Maintenance Record Date: 15-Aug-2025 Location: Utilities Area Compressor C-201 experienced a motor trip after discharge temperature reached 120 C. The cooler was cleaned, the temperature sensor was calibrated, and the compressor was tested. No relation to Pump P-101 was f",
+      "retrieval_hit": true,
+      "top1_hit": false,
+      "answer_pass": false,
+      "refused": false,
+      "missing": [
+        "15 bar"
+      ],
+      "sources": [
+        "compressor-c201-maintenance.txt",
+        "pump-p101-inspection-report.txt",
+        "operating-readings.csv",
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-maintenance-history.txt"
+      ]
+    },
+    {
+      "id": "Q9",
+      "kind": "benchmark",
+      "question": "Did C-201 cause the P-101 failure?",
+      "http": 200,
+      "latency_ms": 14,
+      "mode": "extractive",
+      "confidence": 0.78,
+      "answer": "Based on the indexed maintenance records, observed failure modes include: motor trip. Key corrective actions: calibrated, cleaned, tested.",
+      "retrieval_hit": true,
+      "top1_hit": true,
+      "answer_pass": false,
+      "refused": false,
+      "missing": [
+        "no relation"
+      ],
+      "sources": [
+        "compressor-c201-maintenance.txt",
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-maintenance-history.txt",
+        "safety-sop.txt",
+        "operating-readings.csv"
+      ]
+    },
+    {
+      "id": "Q10",
+      "kind": "benchmark",
+      "question": "What was the P-101 motor current?",
+      "http": 200,
+      "latency_ms": 15,
+      "mode": "extractive",
+      "confidence": 0.8,
+      "answer": "Observed failure patterns include: motor trip. Recorded maintenance actions include: calibrated, cleaned, tested. Relevant measurements include: 120 C. Primary evidence: SYNTHETIC DEMONSTRATION DATA - NOT A REAL OPERATIONAL RECORD Compressor C-201 Maintenance Record Date: 15-Aug-2025 Location: Utilities Area Compressor C-201 experienced a motor trip after discharge temperature reached 120 C. The cooler was cleaned, the temperature sensor was calibrated, and the compressor was tested. No relation to Pump P-101 was f",
+      "retrieval_hit": null,
+      "top1_hit": null,
+      "answer_pass": false,
+      "refused": false,
+      "missing": [
+        "(expected a refusal)"
+      ],
+      "sources": [
+        "compressor-c201-maintenance.txt",
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-maintenance-history.txt",
+        "operating-readings.csv",
+        "pump-p101-inspection-report.txt"
+      ]
+    },
+    {
+      "id": "P1",
+      "kind": "honesty-probe",
+      "question": "Identify risks for compressor C-300",
+      "http": 200,
+      "latency_ms": 12,
+      "mode": "extractive",
+      "confidence": 0.0,
+      "answer": "No indexed documents mention C-300, so I can't answer about it. Upload records for that equipment first.",
+      "retrieval_hit": null,
+      "top1_hit": null,
+      "answer_pass": true,
+      "refused": true,
+      "missing": [],
+      "sources": []
+    },
+    {
+      "id": "P2",
+      "kind": "honesty-probe",
+      "question": "Get me the CGPA in the resume",
+      "http": 200,
+      "latency_ms": 13,
+      "mode": "extractive",
+      "confidence": 0.77,
+      "answer": "Observed failure patterns include: motor trip. Recorded maintenance actions include: calibrated, cleaned, tested. Relevant measurements include: 120 C. Primary evidence: SYNTHETIC DEMONSTRATION DATA - NOT A REAL OPERATIONAL RECORD Compressor C-201 Maintenance Record Date: 15-Aug-2025 Location: Utilities Area Compressor C-201 experienced a motor trip after discharge temperature reached 120 C. The cooler was cleaned, the temperature sensor was calibrated, and the compressor was tested. No relation to Pump P-101 was f",
+      "retrieval_hit": null,
+      "top1_hit": null,
+      "answer_pass": false,
+      "refused": false,
+      "missing": [
+        "(expected a refusal)"
+      ],
+      "sources": [
+        "compressor-c201-maintenance.txt",
+        "pump-p101-maintenance-history.txt",
+        "pump-p101-maintenance-history.txt",
+        "safety-sop.txt",
+        "pump-p101-inspection-report.txt"
+      ]
+    }
+  ],
+  "endpoint_checks": [
+    {
+      "check": "Asset 360 returns evidence for P-101",
+      "pass": true,
+      "detail": "HTTP 200, evidenceChunks=8"
+    },
+    {
+      "check": "RCA for P-101 has evidence-based causes",
+      "pass": true,
+      "detail": "HTTP 200, probableCauses=['bearing failure', 'bearing wear', 'cavitation', 'high vibration']"
+    },
+    {
+      "check": "Analytics lists failure modes",
+      "pass": true,
+      "detail": "HTTP 200, first=[{'failure': 'misalignment', 'count': 5}]"
+    },
+    {
+      "check": "Unknown asset C-300 returns 404",
+      "pass": true,
+      "detail": "HTTP 404"
+    }
+  ]
+}

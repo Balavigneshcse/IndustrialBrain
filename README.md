@@ -1,63 +1,71 @@
-# IndusMind AI - Final Project 
+# IndusMind AI
 
 **Industrial Asset Intelligence & RCA Copilot**
 
-IndusMind AI converts fragmented maintenance records, inspection reports, OEM guidance, safety procedures, and operating data into a searchable industrial knowledge layer. It answers natural-language questions with exact source citations, builds an Asset 360° history, and creates evidence-linked root-cause investigation briefs.
+IndusMind AI converts fragmented maintenance records, inspection reports, OEM guidance, safety procedures, and operating data into a searchable industrial knowledge layer. It answers questions with source citations, builds an Asset 360° view, and creates evidence-linked root-cause briefs.
 
-> **Team Presentation Ready**: This project is optimized for a 5-minute technical presentation. See `IndusMind_Final_Presentation.pptx` and `PRESENTATION_SCRIPT.md` for the slides and script.
+> **Status:** Phase 0 of [docs/UPGRADE_PLAN.md](docs/UPGRADE_PLAN.md) is done. Answers are **extractive**: they are assembled from the retrieved evidence by templates, and no language model is called yet. The fine-tuned Qwen3-4B model, Postgres/pgvector and the rest of the production stack arrive in later phases.
+>
+> `IndusMind_Final_Presentation.pptx` and `PRESENTATION_SCRIPT.md` still describe the earlier plan (Spring Boot, LLaMA-3). They get updated in Phase 8.
 
-##  Key Features
+## What works today
 
-- **Fine-Tuned LLaMA-3 (LoRA)**: Completely offline, fast, and secure 4-bit local inference powered by our custom PyTorch LoRA adapter.
-- **Evidence-First RAG**: Natural language answers backed by exact source document, page, and excerpt citations via a local ChromaDB vector database.
-- **Asset 360° View**: Connects failures, measurements, maintenance actions, and dates.
-- **RCA Intelligence**: Separates observations, probable contributors, and investigation steps.
-- **Fully Local Architecture**: No cloud dependencies. All data and AI inference stay securely on your local network.
+- **Evidence search with citations:** answers cite the source document, page and excerpt, retrieved from a local ChromaDB index.
+- **Honest refusals for unknown equipment:** questions about an asset that no document mentions get "no indexed documents mention …" instead of another asset's data.
+- **Asset 360°:** failures, measurements, maintenance actions, dates and sources for an asset tag.
+- **RCA brief:** observed problem, probable causes, recorded actions, investigation steps and evidence, with DOCX export.
+- **Fully local:** no cloud services; documents and the index stay on this machine.
 
-##  Technology Stack
+Known limits, fixed in later phases:
+- Vectors are hashed bag-of-words (lexical, not semantic).
+- Entities are tagged per document rather than per chunk. For example, the compressor record that says "No relation to Pump P-101" is attributed to P-101.
+- Confidence figures are heuristics.
+
+## Technology stack
 
 | Layer | Technology |
 |---|---|
-| **Frontend** | React 19, TypeScript, Vite, Tailwind-like custom CSS |
-| **Backend API** | Java 21, Spring Boot 3.5, Spring Security, JWT, PostgreSQL/H2 |
-| **AI Brain** | Python 3.12, FastAPI, PyTorch, HuggingFace transformers, peft, bitsandbytes |
-| **AI Model** | LLaMA-3 8B (4-bit quantized) + Industrial LoRA Adapter |
-| **Vector DB** | ChromaDB (Persistent Local Mode) |
+| Frontend | React 19, TypeScript, Vite, custom CSS |
+| Backend API | Python, FastAPI, SQLAlchemy + SQLite, JWT auth |
+| Retrieval | ChromaDB (embedded), page-aware chunking, rule-based entity extraction |
+| Answers | Extractive templates over retrieved evidence (LLM planned: Qwen3-4B-Instruct via Ollama) |
 
-##  How to Run the Demo
+## Run it (Windows, PowerShell)
 
-To run the project perfectly for the presentation tomorrow, we have configured a 1-click startup script that starts everything in optimized mode.
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-all.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\load-sample-data.ps1
+```
 
-1. Open **PowerShell** in this repository's root folder.
-2. Run the start script:
-   ```powershell
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-all.ps1 -DemoMode
-   ```
-3. Open your browser to [http://localhost:5173](http://localhost:5173).
+Then open [http://localhost:5173](http://localhost:5173). To stop everything, run `scripts\stop-all.ps1`.
 
-*(Note: The first time you ask a question, the local LLaMA-3 AI will take a few seconds to load into the GPU. Subsequent questions will be extremely fast!)*
-
-### Demo Accounts
+### Demo accounts (seeded on first start; replaced by a create-admin command in Phase 1)
 | Role | Username | Password |
 |---|---|---|
 | Engineer | `engineer` | `Engineer@123` |
 | Admin | `admin` | `Admin@123` |
 
-### Try asking the AI:
-> "Why did Pump P-101 fail repeatedly?"
+### Try asking
+> "Why did Pump P-101 fail repeatedly in 2025?"
 > "What safety steps apply before pump maintenance?"
 
-##  Stopping the Services
-When the presentation is over, cleanly shut down the AI, Backend, and Frontend by running:
+## Tests and evaluation
+
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\stop-all.ps1
+.\.venv\Scripts\python.exe -m pytest -q
+$env:EVAL_USERNAME = "admin"; $env:EVAL_PASSWORD = "Admin@123"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\eval\serve_and_eval.ps1 -Label my-run
 ```
 
-##  Repository Structure
-- `frontend/` - React application
-- `backend/` - Spring Boot API and security
-- `ai-service/` - FastAPI RAG, ChromaDB, and Local LLM inference code
-- `model-lora-output/` - The fine-tuned LLaMA-3 LoRA adapter weights
-- `sample-data/` - Synthetic industrial demonstration corpus
-- `scripts/` - Automated setup and startup scripts
-- `generate_ppt.py` - Script used to generate the PowerPoint presentation
+The eval runs the 10 benchmark questions plus honesty probes against a throwaway copy of the server and writes a report to `eval/reports/`.
+
+## Repository structure
+
+- `server/`: FastAPI API (auth, documents, chat, assets, RCA, analytics) and its tests
+- `frontend/`: React application
+- `eval/`: benchmark questions, evaluation harness, reports
+- `ml/`: model training setup (Phase 5): WSL setup scripts and the pinned training environment
+- `sample-data/`: synthetic industrial demonstration corpus
+- `scripts/`: setup, start/stop, sample-data loading, smoke test
+- `docs/`: upgrade plan, API reference, architecture

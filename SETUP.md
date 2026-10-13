@@ -3,59 +3,45 @@
 ## Install
 
 1. Git for Windows
-2. IntelliJ IDEA Community Edition
-3. Eclipse Temurin JDK 21
-4. Maven 3.9+
-5. Node.js LTS
-6. Python 3.11 or 3.12
-7. PostgreSQL 16+ and pgAdmin for the production profile
-8. Tesseract OCR only if scanned-PDF OCR is required
-9. OBS Studio for recording the demo
+2. Node.js LTS
+3. Python 3.11 or 3.12. During installation, enable **Add Python to PATH**.
+4. Tesseract OCR and Poppler, only if scanned PDFs or images need OCR
 
-During Python installation, enable **Add Python to PATH**.
+The later upgrade phases also use Docker Desktop, WSL2 (Ubuntu) and Ollama; see [docs/UPGRADE_PLAN.md](docs/UPGRADE_PLAN.md).
 
-## IntelliJ configuration
+## One-command setup
 
-1. Open the repository.
-2. Import `backend/pom.xml` as a Maven project.
-3. Set Project SDK to Java 21 or newer.
-4. Run `IndusMindApplication`.
-5. Add `--spring.profiles.active=demo` for zero-setup local mode.
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1
+```
 
-The frontend and AI service are best run from IntelliJ's terminal or VS Code.
+This installs and builds the frontend, creates `.venv` with the server dependencies, and runs the server tests.
 
 ## Manual startup
 
-Terminal 1:
+Terminal 1 (API on port 8000), from the repository root:
 
 ```powershell
-cd ai-service
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe run.py
+.\.venv\Scripts\python.exe -m pip install -r server\requirements.txt -r server\requirements-dev.txt
+.\.venv\Scripts\python.exe -m uvicorn server.main:app --host 127.0.0.1 --port 8000
 ```
 
-Terminal 2:
-
-```powershell
-cd backend
-mvn spring-boot:run -Dspring-boot.run.profiles=demo
-```
-
-Terminal 3:
+Terminal 2 (web UI on port 5173; `/api` is proxied to port 8000):
 
 ```powershell
 cd frontend
-npm.cmd install
+npm.cmd ci
 npm.cmd run dev
 ```
 
-Then visit `http://localhost:5173`.
+Then visit `http://localhost:5173`. Interactive API docs are at `http://127.0.0.1:8000/docs`.
+
+## Configuration
+
+The server reads environment variables; see `.env.example` for the list. By default it stores data under `data/` (SQLite database, uploads, Chroma index).
 
 ## Ports
 
-- React: `5173`
-- Spring Boot: `8081`
+- React (Vite dev server): `5173`
 - FastAPI: `8000`
-- PostgreSQL: `5432`
-

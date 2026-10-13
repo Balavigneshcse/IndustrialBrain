@@ -1,33 +1,26 @@
-# IndusMind AI System Architecture
+# IndusMind AI System Architecture (current)
+
+This is what runs today. The target production architecture is in [../UPGRADE_PLAN.md](../UPGRADE_PLAN.md) §3.
 
 ```mermaid
 flowchart LR
-    U[Admin / Engineer] --> R[React + TypeScript]
-    R -->|JWT REST API| S[Spring Boot]
-    S --> AUTH[Spring Security]
-    S --> PG[(PostgreSQL)]
-    S --> FILES[(Original Files)]
-    S -->|Internal REST| F[FastAPI AI Service]
-    F --> EX[PyPDF / DOCX / CSV extraction]
-    EX --> OCR[Tesseract OCR fallback]
-    EX --> ENT[Entity + event extraction]
+    U[Admin / Engineer] --> R[React + TypeScript<br/>Vite dev server :5173]
+    R -->|/api proxy, JWT| S[FastAPI server :8000]
+    S --> DB[(SQLite<br/>users, documents, query logs)]
+    S --> FILES[(data/uploads<br/>original files)]
+    S --> EX[Extraction: PDF, DOCX, CSV, XLSX, PPTX, HTML, EML<br/>Tesseract OCR fallback]
+    EX --> ENT[Rule-based entities<br/>asset tags, dates, measurements, failures, actions]
     ENT --> CHUNK[Page-aware chunking]
-    CHUNK --> V[(ChromaDB)]
-    V --> RET[Evidence retrieval]
-    RET --> G{Gemini key?}
-    G -->|Yes| GEM[Gemini grounded generation]
-    G -->|No| OFF[Offline evidence summary]
-    GEM --> CITE[Citations + confidence]
-    OFF --> CITE
-    CITE --> S
+    CHUNK --> V[(ChromaDB, embedded<br/>hashed bag-of-words vectors)]
+    V --> RET[Evidence retrieval<br/>exact asset-tag filter]
+    RET --> ANS[Extractive answer templates<br/>+ citations]
+    ANS --> S
 ```
 
 ## Responsibility boundaries
 
-- React presents workflows but never calls the AI service directly.
-- Spring Boot is the system of record and security boundary.
-- PostgreSQL stores users, document metadata, and query logs.
-- FastAPI owns document intelligence, retrieval, citations, and RCA support.
-- ChromaDB runs in embedded persistent mode, avoiding another server.
-- Gemini is optional; evidence retrieval and deterministic summaries work offline.
-
+- React presents the workflows and talks only to the FastAPI server.
+- FastAPI handles authentication (JWT), document storage, extraction, indexing, retrieval, answers, Asset 360, RCA and analytics.
+- SQLite stores users, document metadata and query logs.
+- ChromaDB runs embedded and persistent under `data/chroma`.
+- No language model is called yet. Answers are assembled from retrieved evidence (`mode: "extractive"`).

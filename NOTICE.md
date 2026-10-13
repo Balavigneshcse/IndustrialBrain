@@ -1,8 +1,7 @@
 # Third-party software notice
 
-IndusMind AI uses open-source libraries distributed under their respective licenses, including Spring Boot, React, Vite, FastAPI, ChromaDB, PyPDF, python-docx, pytesseract, and PostgreSQL drivers.
+IndusMind AI uses open-source libraries distributed under their respective licenses, including React, Vite, FastAPI, Uvicorn, SQLAlchemy, ChromaDB, PyPDF, python-docx, python-pptx, pandas, openpyxl, Beautiful Soup, pytesseract, pdf2image, PyJWT and passlib.
 
-Google Gemini is optional and is accessed through Google's public Gemini API under the user's own API key and applicable Google terms. No API key is distributed with this repository.
+Models and datasets downloaded for the upgrade plan (Qwen3, BGE embedding and reranker models, glaiveai/RAG-v1, neural-bridge/rag-dataset-12000, SQuAD v2, AI4I 2020) keep their own licenses. These are listed in [docs/UPGRADE_PLAN.md](docs/UPGRADE_PLAN.md) §5.1 and §7, and are not redistributed in this repository.
 
 All documents in `sample-data/` are synthetic demonstration content and do not represent a real company, OEM manual, person, incident, or operational record.
-

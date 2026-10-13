@@ -28,7 +28,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 REFUSAL_MARKERS = (
-    "insufficient evidence", "could not find", "no indexed evidence", "not enough evidence",
+    "insufficient evidence", "could not find", "no indexed evidence", "no indexed documents mention",
+    "not enough evidence",
     "no evidence", "not available in", "cannot answer", "not found in",
 )
 

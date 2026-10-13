@@ -1,37 +1,32 @@
-# Document and Question Data Flow
+# Document and Question Data Flow (current)
 
 ```mermaid
 sequenceDiagram
     actor User
     participant UI as React
-    participant API as Spring Boot
-    participant DB as PostgreSQL
-    participant AI as FastAPI
+    participant API as FastAPI
+    participant DB as SQLite
     participant V as ChromaDB
-    participant LLM as Gemini
 
     User->>UI: Upload document
     UI->>API: Multipart file + JWT
-    API->>DB: Create PROCESSING record
-    API->>AI: Process original file
-    AI->>AI: Extract text, entities, pages
-    AI->>V: Store chunks + metadata
-    AI-->>API: Tags, type, summary
-    API->>DB: Mark READY
-    API-->>UI: Processing result
-
-    User->>UI: Ask asset question
-    UI->>API: Question + asset tag
-    API->>AI: Authorized query
-    AI->>V: Retrieve evidence
-    alt Gemini key configured
-        AI->>LLM: Question + evidence
-        LLM-->>AI: Grounded answer
-    else No key / no internet
-        AI->>AI: Deterministic evidence summary
+    API->>API: Save file, extract text, pages and entities
+    alt Text extracted
+        API->>V: Store chunks + metadata
+        API->>DB: Document READY
+    else Extraction failed or no text
+        API->>DB: Document FAILED + errorMessage (nothing indexed)
     end
-    AI-->>API: Answer + citations + confidence
-    API->>DB: Log query
-    API-->>UI: Render answer and source trail
-```
+    API-->>UI: Document record
 
+    User->>UI: Ask a question (optional asset tag)
+    UI->>API: Question + JWT
+    alt Question names an asset no document mentions
+        API-->>UI: "No indexed documents mention ..." (no citations)
+    else
+        API->>V: Retrieve evidence (exact tag filter if given)
+        API->>API: Build extractive answer from evidence
+        API->>DB: Log query
+        API-->>UI: Answer + citations + heuristic confidence
+    end
+```

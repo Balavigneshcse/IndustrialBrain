@@ -218,6 +218,18 @@ All figures are **estimates**. Phase 7 replaces them with measured numbers.
 5. Fix `scripts/*.ps1` (port 8000, correct routes), delete `ai-service/` duplicates, and remove the nested `sample-data/`.
 6. Build `eval/run_eval.py` with the 10 benchmark questions and **record baseline numbers** for today's system.
 
+**✅ Done 2026-10-13.** Reports: `eval/reports/2026-10-13-baseline-original.md` and `…-after-phase0.md`. Same harness, fresh server, sample corpus.
+
+| Metric | Baseline (original code) | After Phase 0 |
+|---|---|---|
+| Endpoint checks (Asset 360, RCA, Analytics, unknown asset) | 2/4 | **4/4** |
+| Correct refusals (Q10 + 2 honesty probes) | 0/3 | **1/3** (C-300 probe) |
+| Correct source as first citation | 5/9 | 5/9 |
+| Benchmark answers with the required facts | 3/10 | 3/10 |
+| Server tests | none | 17 passing (8 of the 10 API tests fail on the original code) |
+
+Answer quality did not change: Phase 0 removed broken and dishonest behaviour, and did not touch retrieval or generation. The remaining misses are the targets for Phase 2 (semantic retrieval, per-chunk entities, a tuned no-evidence threshold) and Phase 3 (LLM answers that can count events, quote findings and refuse out-of-corpus questions such as Q10 and the CGPA probe).
+
 ### Phase 1: Backend foundation
 - Implement the `server/app/` layout from §3.1:
   - `pydantic-settings` config that refuses to start in prod without `SECRET_KEY` and `DATABASE_URL`.
