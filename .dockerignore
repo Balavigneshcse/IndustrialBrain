@@ -1,0 +1,16 @@
+# Keep the build context small and free of secrets and data.
+.git
+.env
+.venv
+.idea
+.vscode
+.claude
+**/__pycache__
+**/.pytest_cache
+**/node_modules
+data
+ml
+models
+model-lora-output
+eval/.work
+*.pptx
