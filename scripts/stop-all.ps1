@@ -1,6 +1,6 @@
 $Root = Split-Path -Parent $PSScriptRoot
 $RunDir = Join-Path $Root "data\run"
-foreach ($Name in @("frontend", "backend", "ai-service")) {
+foreach ($Name in @("frontend", "backend", "worker")) {
     $PidFile = Join-Path $RunDir "$Name.pid"
     if (Test-Path $PidFile) {
         $ProcessId = [int](Get-Content -LiteralPath $PidFile)
@@ -9,7 +9,7 @@ foreach ($Name in @("frontend", "backend", "ai-service")) {
         Write-Host "Stopped $Name"
     }
 }
-foreach ($Port in @(8000, 8081, 5173)) {
+foreach ($Port in @(8000, 5173)) {
     $Conns = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
     if ($Conns) {
         foreach ($Conn in $Conns) {

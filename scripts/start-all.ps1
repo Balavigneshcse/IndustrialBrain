@@ -29,9 +29,9 @@ if (-not (Test-Path $Python)) { throw "Python environment not found at .venv. Ru
 
 Write-Host "Using Python: $Python" -ForegroundColor Cyan
 
-# Database container, then schema migrations (and the demo accounts outside production)
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "start-db.ps1")
-if ($LASTEXITCODE -ne 0) { throw "Database did not start" }
+# Database and Redis containers, then schema migrations (and the demo accounts outside production)
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "start-services.ps1")
+if ($LASTEXITCODE -ne 0) { throw "Database/Redis did not start" }
 Push-Location $Root
 try {
     & $Python -m server.app.cli migrate
@@ -39,8 +39,9 @@ try {
     if ($DemoMode) { & $Python -m server.app.cli seed-demo }
 } finally { Pop-Location }
 
-# FastAPI backend
+# FastAPI backend, and the background worker that processes uploads (thread pool: Windows-friendly)
 Start-IndusProcess "backend" $Python @("-m", "uvicorn", "server.app.main:app", "--host", "127.0.0.1", "--port", "8000") $Root
+Start-IndusProcess "worker" $Python @("-m", "celery", "-A", "server.app.workers.celery_app", "worker", "--pool=threads", "--concurrency=2", "-Q", "indusmind", "--loglevel=INFO") $Root
 
 # Start React frontend
 $Npm = (Get-Command npm.cmd -ErrorAction Stop).Source

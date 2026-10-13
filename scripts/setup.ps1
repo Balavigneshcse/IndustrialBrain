@@ -15,10 +15,10 @@ if (-not $Python) {
     $PythonExe = "python"; $PythonArgs = @()
 }
 
-# Secrets (.env) and the database container
+# Secrets (.env), then the database and Redis containers
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "init-env.ps1")
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "start-db.ps1")
-if ($LASTEXITCODE -ne 0) { throw "Database did not start" }
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "start-services.ps1")
+if ($LASTEXITCODE -ne 0) { throw "Database/Redis did not start" }
 
 Push-Location "$Root\frontend"
 try {

@@ -23,6 +23,8 @@ $Lines = @(
     "POSTGRES_HOST=127.0.0.1",
     "POSTGRES_PORT=5433",
     "",
+    "REDIS_URL=redis://127.0.0.1:6379/0",
+    "",
     "UPLOAD_DIR=data/uploads",
     "ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173",
     "COOKIE_SECURE=false",
