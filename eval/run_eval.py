@@ -97,24 +97,24 @@ def grade(item: dict, answer: str, citations: list[dict]) -> dict:
 
 def endpoint_checks(api: Api) -> list[dict]:
     checks = []
-    status, body = api.request("GET", "/api/assets/P-101")
+    status, body = api.request("GET", "/api/v1/assets/P-101")
     ok = status == 200 and isinstance(body, dict) and body.get("evidenceChunks", 0) > 0
     checks.append({"check": "Asset 360 returns evidence for P-101", "pass": ok,
                    "detail": f"HTTP {status}, evidenceChunks={body.get('evidenceChunks') if isinstance(body, dict) else 'n/a'}"})
 
-    status, body = api.request("POST", "/api/rca/P-101")
+    status, body = api.request("POST", "/api/v1/rca/P-101")
     causes = body.get("probableCauses", []) if isinstance(body, dict) else []
     ok = status == 200 and bool(causes) and not any("insufficient" in c.lower() for c in causes)
     checks.append({"check": "RCA for P-101 has evidence-based causes", "pass": ok,
                    "detail": f"HTTP {status}, probableCauses={causes[:4]}"})
 
-    status, body = api.request("GET", "/api/analytics")
+    status, body = api.request("GET", "/api/v1/analytics")
     modes = body.get("topFailureModes", []) if isinstance(body, dict) else []
     ok = status == 200 and bool(modes)
     checks.append({"check": "Analytics lists failure modes", "pass": ok,
                    "detail": f"HTTP {status}, first={modes[:1]}"})
 
-    status, body = api.request("GET", "/api/assets/C-300")
+    status, body = api.request("GET", "/api/v1/assets/C-300")
     checks.append({"check": "Unknown asset C-300 returns 404", "pass": status == 404, "detail": f"HTTP {status}"})
     return checks
 
@@ -134,7 +134,7 @@ def main() -> int:
         return 2
 
     api = Api(args.base_url)
-    status, body = api.post_json("/api/auth/login", {"username": username, "password": password})
+    status, body = api.post_json("/api/v1/auth/login", {"username": username, "password": password})
     if status != 200:
         print(f"Login failed: HTTP {status} {body}", file=sys.stderr)
         return 1
@@ -143,7 +143,7 @@ def main() -> int:
     uploads = []
     if args.load_corpus:
         for file_path in sorted(p for p in Path(args.load_corpus).iterdir() if p.is_file()):
-            status, body = api.upload("/api/documents/upload", file_path)
+            status, body = api.upload("/api/v1/documents/upload", file_path)
             uploads.append({"file": file_path.name, "http": status,
                             "status": body.get("status") if isinstance(body, dict) else body})
 
@@ -151,7 +151,7 @@ def main() -> int:
     results = []
     for item in items:
         started = time.perf_counter()
-        status, body = api.post_json("/api/chat/query", {"question": item["question"], "desiredFormat": "quick_answer"})
+        status, body = api.post_json("/api/v1/chat/query", {"question": item["question"], "desiredFormat": "quick_answer"})
         latency_ms = round((time.perf_counter() - started) * 1000)
         body = body if isinstance(body, dict) else {}
         answer = str(body.get("answer", ""))
