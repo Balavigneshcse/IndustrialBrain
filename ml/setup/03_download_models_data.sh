@@ -49,4 +49,11 @@ for name in ("BAAI/bge-reranker-base", "Xenova/ms-marco-MiniLM-L-6-v2"):
     print(f"{name} scores:", [round(s, 2) for s in scores])
 EOF
 
+# The HF cache stores files as symlinks into blobs/. Symlinks created by WSL on a Windows drive
+# cannot be read by Windows programs or Docker bind mounts, so replace them with real files.
+find "$FASTEMBED_DIR" -type l | while read -r link; do
+  cp --remove-destination "$(readlink -f "$link")" "$link"
+done
+find "$FASTEMBED_DIR" -type d -name blobs -prune -exec rm -rf {} +
+
 echo "[03] downloads OK"
