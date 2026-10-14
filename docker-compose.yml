@@ -16,6 +16,9 @@ x-app: &app
     REDIS_URL: redis://redis:6379/0
     UPLOAD_DIR: /data/uploads
     MODELS_DIR: /models
+    OLLAMA_URL: http://host.docker.internal:11434   # Ollama runs natively on the host, for the GPU
+  extra_hosts:
+    - host.docker.internal:host-gateway             # (Docker Desktop provides it; Linux needs this line)
   volumes:
     - uploads:/data/uploads
     - ./data/models/fastembed:/models:ro   # downloaded by ml/setup/03_download_models_data.sh

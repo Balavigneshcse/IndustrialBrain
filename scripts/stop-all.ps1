@@ -1,3 +1,6 @@
+# Stops what start-all.ps1 started. Ollama is stopped too (freeing the GPU, e.g. for training) if
+# start-ollama.ps1 started it; an Ollama you started yourself is left running. -KeepOllama skips it.
+param([switch]$KeepOllama)
 $Root = Split-Path -Parent $PSScriptRoot
 $RunDir = Join-Path $Root "data\run"
 foreach ($Name in @("frontend", "backend", "worker")) {
@@ -20,4 +23,10 @@ foreach ($Port in @(8000, 5173)) {
         }
     }
 }
-
+$OllamaPid = Join-Path $RunDir "ollama.pid"
+if (-not $KeepOllama -and (Test-Path $OllamaPid)) {
+    $ProcessId = [int](Get-Content -LiteralPath $OllamaPid)
+    & taskkill.exe /PID $ProcessId /T /F 2>$null | Out-Null   # /T: the model runner is a child process
+    Remove-Item -LiteralPath $OllamaPid -Force
+    Write-Host "Stopped Ollama (GPU memory released)"
+}

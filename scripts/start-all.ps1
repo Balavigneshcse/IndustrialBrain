@@ -4,7 +4,7 @@ $Root = Split-Path -Parent $PSScriptRoot
 $RunDir = Join-Path $Root "data\run"
 New-Item -ItemType Directory -Force -Path $RunDir | Out-Null
 $StopScript = Join-Path $PSScriptRoot "stop-all.ps1"
-if (Test-Path $StopScript) { powershell.exe -NoProfile -ExecutionPolicy Bypass -File $StopScript | Out-Null }
+if (Test-Path $StopScript) { powershell.exe -NoProfile -ExecutionPolicy Bypass -File $StopScript -KeepOllama | Out-Null }
 
 function Start-IndusProcess($Name, $FilePath, $Arguments, $WorkingDirectory) {
     $Info = [System.Diagnostics.ProcessStartInfo]::new()
@@ -38,6 +38,10 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Database migration failed" }
     if ($DemoMode) { & $Python -m server.app.cli seed-demo }
 } finally { Pop-Location }
+
+# Language model on the GPU (Ollama). Without it the API still answers, from the top evidence.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "start-ollama.ps1")
+if ($LASTEXITCODE -ne 0) { Write-Warning "Ollama did not start: answers show the top evidence until it runs." }
 
 # FastAPI backend, and the background worker that processes uploads (thread pool: Windows-friendly)
 Start-IndusProcess "backend" $Python @("-m", "uvicorn", "server.app.main:app", "--host", "127.0.0.1", "--port", "8000") $Root
