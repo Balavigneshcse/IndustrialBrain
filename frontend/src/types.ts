@@ -40,10 +40,13 @@ export interface DashboardData {
   queries: number;
   assetTags: string[];
   aiOnline: boolean;
+  llmStatus?: string;
   recentQueries: RecentQuery[];
 }
 
 export interface Citation {
+  label?: string;   // "S1": the marker used in the answer text
+  cited?: boolean;  // the answer cites this source
   docId: string;
   filename: string;
   source: string;
@@ -54,16 +57,30 @@ export interface Citation {
   relevance: number;
 }
 
-export type AnswerFormat = 'paragraph' | 'bullet' | 'table';
+export type AnswerFormat = 'paragraph' | 'bullet' | 'table' | 'report' | 'work_order' | 'checklist';
+export type EvidenceStrength = 'high' | 'medium' | 'low';
 
 export interface ChatAnswer {
   answer: string;
-  mode: string;
+  mode: 'llm' | 'extractive' | 'assistant' | 'no-evidence' | 'stopped';
   format: string;
+  evidenceStrength?: EvidenceStrength | null;
+  refused?: boolean;
+  notice?: string | null;
+  warnings?: string[];
+  question?: string;
+  model?: string | null;
   confidence: number;
   citations: Citation[];
   assetTag?: string;
   queryId: number;
+}
+
+// Events of POST /chat/stream (server/app/services/qa.py)
+export interface StreamHandlers {
+  onStatus?: (stage: string, position?: number) => void;
+  onSources?: (citations: Citation[]) => void;
+  onToken?: (text: string) => void;
 }
 
 export interface ConversationTurn {
@@ -72,6 +89,10 @@ export interface ConversationTurn {
   citations?: Citation[];
   id?: number;
   mode?: string;
+  strength?: EvidenceStrength | null;
+  notice?: string | null;
+  warnings?: string[];
+  streaming?: boolean;
 }
 
 export interface TimelineEvent {
@@ -92,6 +113,8 @@ export interface AssetData {
 }
 
 export interface RcaCitation {
+  label?: string;
+  cited?: boolean;
   source: string;
   page: number;
   excerpt: string;
@@ -107,6 +130,11 @@ export interface RcaData {
   eventDates: string[];
   recommendedInvestigation: string[];
   preventiveActions: string[];
+  mode?: 'llm' | 'extractive';
+  evidenceStrength?: EvidenceStrength | null;
+  notice?: string | null;
+  warnings?: string[];
+  model?: string | null;
   confidence: number;
   disclaimer: string;
   citations: RcaCitation[];

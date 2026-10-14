@@ -16,7 +16,9 @@ export const Dashboard: React.FC = () => {
     <div className="page-container animate-fade-in">
       <div className="hero-section">
         <h1 className="hero-title text-gradient">Industrial Intelligence, Redefined.</h1>
-        <p className="hero-subtitle">Evidence index: {data.aiOnline ? 'Online' : 'Offline'}</p>
+        <p className="hero-subtitle" title={data.llmStatus}>
+          Language model: {data.aiOnline ? 'Online' : 'Offline (answers show the top evidence)'}
+        </p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>

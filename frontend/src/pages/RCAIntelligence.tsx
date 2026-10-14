@@ -68,9 +68,21 @@ export const RCAIntelligence: React.FC = () => {
           <div className="rca-header">
             <div>
               <h2 className="rca-title">RCA: {rca.assetTag}</h2>
-              <span className="badge badge-warning" title="Heuristic score from the amount of matching evidence, not a calibrated probability">
-                Heuristic confidence: {Math.round(rca.confidence * 100)}%
+              <span
+                className={`badge ${rca.evidenceStrength === 'high' ? 'badge-success' : rca.evidenceStrength === 'medium' ? 'badge-warning' : 'badge-danger'}`}
+                title="From the relevance of the cited evidence and the automatic checks on the brief (numbers and citations)"
+              >
+                Evidence: {rca.evidenceStrength ?? 'low'}
               </span>
+              <span className="text-xs text-muted" style={{ marginLeft: '0.6rem' }}>
+                {rca.mode === 'llm' ? `Drafted by ${rca.model}` : 'Extractive summary of the evidence'}
+              </span>
+              {rca.notice && <div className="text-xs" style={{ color: 'var(--accent-warning)', marginTop: '0.4rem' }}>{rca.notice}</div>}
+              {rca.warnings && rca.warnings.length > 0 && (
+                <ul className="text-xs" style={{ color: 'var(--accent-warning)', marginTop: '0.4rem', paddingLeft: '1rem' }}>
+                  {rca.warnings.map(w => <li key={w}>{w}</li>)}
+                </ul>
+              )}
             </div>
             <button className="btn btn-secondary" onClick={handleExport}>
               Download DOCX
@@ -118,7 +130,7 @@ export const RCAIntelligence: React.FC = () => {
               <h3 className="rca-block-title">Evidence</h3>
               {rca.citations.map((c, i) => (
                 <div key={i} className="citation-item">
-                  <div className="citation-filename">{c.source} (p. {c.page})</div>
+                  <div className="citation-filename">{c.label && <strong>[{c.label}] </strong>}{c.source} (p. {c.page})</div>
                   <div className="citation-text">"{c.excerpt}"</div>
                 </div>
               ))}

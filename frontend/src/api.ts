@@ -1,4 +1,4 @@
-import { Session, DashboardData, DocumentRecord, ChatAnswer, AnswerFormat, AssetData, RcaData, AnalyticsData } from './types';
+import { Session, DashboardData, DocumentRecord, ChatAnswer, AnswerFormat, AssetData, RcaData, AnalyticsData, StreamHandlers } from './types';
 
 const API_BASE = '/api';
 
@@ -17,6 +17,61 @@ function refreshSession(): Promise<boolean> {
     .catch(() => false)
     .finally(() => { refreshing = null; });
   return refreshing;
+}
+
+async function errorDetail(res: Response): Promise<string> {
+  let detail = res.statusText;
+  try {
+    const body = await res.json();
+    if (body?.detail) detail = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail);
+  } catch {
+    // Error body was not JSON; keep the status text.
+  }
+  return detail || `HTTP ${res.status}`;
+}
+
+type ChatPayload = { question: string, assetTag?: string, desiredFormat: AnswerFormat, history: { role: string; content: string }[] };
+
+// POST /chat/stream answers with Server-Sent Events (status, sources, token..., done | error).
+// Aborting `signal` closes the connection, which stops generation on the server.
+async function chatStream(payload: ChatPayload, handlers: StreamHandlers, signal: AbortSignal): Promise<ChatAnswer> {
+  const send = () => fetch(`${API_BASE}/chat/stream`, {
+    method: 'POST',
+    signal,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` },
+    body: JSON.stringify(payload),
+  });
+  let res = await send();
+  if (res.status === 401 && localStorage.getItem('token') && await refreshSession()) res = await send();
+  if (!res.ok || !res.body) throw new Error(await errorDetail(res));
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let end: number;
+    while ((end = buffer.indexOf('\n\n')) >= 0) {
+      const block = buffer.slice(0, end);
+      buffer = buffer.slice(end + 2);
+      let event = 'message';
+      const data: string[] = [];
+      for (const line of block.split('\n')) {
+        if (line.startsWith('event: ')) event = line.slice(7);
+        else if (line.startsWith('data: ')) data.push(line.slice(6));
+      }
+      if (data.length === 0) continue;
+      const body = JSON.parse(data.join('\n'));
+      if (event === 'status') handlers.onStatus?.(body.stage, body.position);
+      else if (event === 'sources') handlers.onSources?.(body.citations);
+      else if (event === 'token') handlers.onToken?.(body.text);
+      else if (event === 'done') return body as ChatAnswer;
+      else if (event === 'error') throw new Error(body.detail || body.title);
+    }
+  }
+  throw new Error('The answer stream ended unexpectedly');
 }
 
 async function fetchApi<T>(endpoint: string, options: RequestInit = {}, retried = false): Promise<T> {
@@ -43,14 +98,7 @@ async function fetchApi<T>(endpoint: string, options: RequestInit = {}, retried 
       localStorage.removeItem('username');
       window.location.reload();
     }
-    let detail = res.statusText;
-    try {
-      const body = await res.json();
-      if (body?.detail) detail = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail);
-    } catch {
-      // Error body was not JSON; keep the status text.
-    }
-    throw new Error(detail || `HTTP ${res.status}`);
+    throw new Error(await errorDetail(res));
   }
 
   // Handle binary download
@@ -73,8 +121,9 @@ export const api = {
   },
   getDocuments: () => fetchApi<DocumentRecord[]>('/documents'),
   deleteDocument: (id: string) => fetchApi<{ ok: boolean }>(`/documents/${id}`, { method: 'DELETE' }),
-  chatQuery: (payload: { question: string, assetTag?: string, desiredFormat: AnswerFormat, history: { role: string; content: string }[] }) =>
+  chatQuery: (payload: ChatPayload) =>
     fetchApi<ChatAnswer>('/chat/query', { method: 'POST', body: JSON.stringify(payload) }),
+  chatStream,
   chatFeedback: (id: number, feedback: 1 | -1 | null) =>
     fetchApi<{ ok: boolean }>(`/chat/${id}/feedback`, { method: 'PATCH', body: JSON.stringify({ feedback }) }),
   getAsset: (tag: string) => fetchApi<AssetData>(`/assets/${encodeURIComponent(tag)}`),

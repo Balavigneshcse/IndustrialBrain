@@ -1,6 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { api } from '../api';
-import { ConversationTurn, AnswerFormat } from '../types';
+import { ConversationTurn, AnswerFormat, EvidenceStrength } from '../types';
+
+const STRENGTH_BADGE: Record<EvidenceStrength, string> = { high: 'badge-success', medium: 'badge-warning', low: 'badge-danger' };
+const STRENGTH_HINT = 'From the relevance of the cited evidence and the automatic checks on the answer (numbers and citations).';
+
+function stageText(stage: string, position?: number): string {
+  if (stage === 'queued') return `Waiting for the model: ${position} ${position === 1 ? 'question' : 'questions'} ahead`;
+  if (stage === 'rewriting') return 'Understanding the follow-up…';
+  if (stage === 'retrieving') return 'Searching the documents…';
+  return 'Writing the answer…';
+}
 
 export const ChatPanel: React.FC = () => {
   const [history, setHistory] = useState<ConversationTurn[]>([]);
@@ -8,7 +18,9 @@ export const ChatPanel: React.FC = () => {
   const [format, setFormat] = useState<AnswerFormat>('paragraph');
   const [assetTag, setAssetTag] = useState('');
   const [loading, setLoading] = useState(false);
+  const [stage, setStage] = useState<{ name: string; position?: number }>({ name: '' });
   const scrollRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -16,30 +28,55 @@ export const ChatPanel: React.FC = () => {
     }
   }, [history, loading]);
 
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  // Updates the answer being streamed (always the last turn).
+  const updateLast = (change: (turn: ConversationTurn) => ConversationTurn) =>
+    setHistory(turns => [...turns.slice(0, -1), change(turns[turns.length - 1])]);
+
   const handleSend = async () => {
-    if (!input.trim()) return;
-    
+    if (!input.trim() || loading) return;
+
     const userMsg = input.trim();
     setInput('');
-    const newHistory = [...history, { role: 'user' as const, content: userMsg }];
-    setHistory(newHistory);
+    const earlier = history.filter(t => !t.streaming);
+    const newHistory = [...earlier, { role: 'user' as const, content: userMsg }];
+    setHistory([...newHistory, { role: 'ai', content: '', streaming: true }]);
     setLoading(true);
+    setStage({ name: 'retrieving' });
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
-      const res = await api.chatQuery({
+      const res = await api.chatStream({
         question: userMsg,
         assetTag: assetTag || undefined,
         desiredFormat: format,
         history: newHistory.map(t => ({ role: t.role, content: t.content })),
-      });
-      setHistory([...newHistory, { role: 'ai', content: res.answer, citations: res.citations, id: res.queryId, mode: res.mode }]);
+      }, {
+        onStatus: (name, position) => setStage({ name, position }),
+        onSources: citations => updateLast(t => ({ ...t, citations })),
+        onToken: text => updateLast(t => ({ ...t, content: t.content + text })),
+      }, controller.signal);
+      updateLast(() => ({
+        role: 'ai', content: res.answer, citations: res.citations, id: res.queryId, mode: res.mode,
+        strength: res.evidenceStrength, notice: res.notice, warnings: res.warnings,
+      }));
     } catch (err) {
-      const reason = err instanceof Error ? err.message : 'unknown error';
-      setHistory([...newHistory, { role: 'ai', content: `Could not get an answer (${reason}).` }]);
+      if (controller.signal.aborted) {
+        updateLast(t => ({ ...t, streaming: false, mode: 'stopped', content: (t.content ? t.content + '\n\n' : '') + '(Stopped.)' }));
+      } else {
+        const reason = err instanceof Error ? err.message : 'unknown error';
+        updateLast(() => ({ role: 'ai', content: `Could not get an answer (${reason}).` }));
+      }
     } finally {
+      abortRef.current = null;
       setLoading(false);
+      setStage({ name: '' });
     }
   };
+
+  const handleStop = () => abortRef.current?.abort();
 
   const handleFeedback = async (id: number, fb: 1 | -1) => {
     try {
@@ -54,6 +91,8 @@ export const ChatPanel: React.FC = () => {
     "What safety steps apply before pump maintenance?",
     "What did the lubricant sample show?",
   ];
+
+  const last = history[history.length - 1];
 
   return (
     <div className="chat-container">
@@ -75,12 +114,32 @@ export const ChatPanel: React.FC = () => {
             <div key={i} className={`chat-message ${turn.role === 'user' ? 'chat-user' : 'chat-ai'}`}>
               <div className="chat-sender">
                 {turn.role === 'user' ? 'You' : 'IndusMind AI'}
+                {turn.role === 'ai' && turn.strength && (
+                  <span className={`badge ${STRENGTH_BADGE[turn.strength]}`} style={{ marginLeft: '0.5rem' }} title={STRENGTH_HINT}>
+                    Evidence: {turn.strength}
+                  </span>
+                )}
               </div>
-              <div className="chat-content">{turn.content}</div>
-              {turn.role === 'ai' && turn.mode === 'extractive' && (
-                <div className="text-xs text-muted" style={{ marginTop: '0.4rem' }}>
-                  Extractive answer: assembled from the cited evidence, no language model yet.
+              {turn.streaming && !turn.content ? (
+                <div className="text-sm text-muted">
+                  <div className="typing-indicator"><span></span><span></span><span></span></div>
+                  {stageText(stage.name, stage.position)}
                 </div>
+              ) : (
+                <div className="chat-content">{turn.content}</div>
+              )}
+              {turn.notice && (
+                <div className="text-xs" style={{ marginTop: '0.4rem', color: 'var(--accent-warning)' }}>{turn.notice}</div>
+              )}
+              {turn.role === 'ai' && turn.mode === 'extractive' && !turn.notice && (
+                <div className="text-xs text-muted" style={{ marginTop: '0.4rem' }}>
+                  Extractive answer: assembled from the cited evidence (the language model is turned off).
+                </div>
+              )}
+              {turn.warnings && turn.warnings.length > 0 && (
+                <ul className="text-xs" style={{ marginTop: '0.4rem', color: 'var(--accent-warning)', paddingLeft: '1rem' }}>
+                  {turn.warnings.map(w => <li key={w}>{w}</li>)}
+                </ul>
               )}
               {turn.role === 'ai' && turn.id && (
                 <div className="chat-feedback">
@@ -90,12 +149,6 @@ export const ChatPanel: React.FC = () => {
               )}
             </div>
           ))}
-          {loading && (
-            <div className="chat-message chat-ai">
-              <div className="chat-sender">IndusMind AI</div>
-              <div className="typing-indicator"><span></span><span></span><span></span></div>
-            </div>
-          )}
         </div>
 
         {/* Input Area */}
@@ -123,19 +176,24 @@ export const ChatPanel: React.FC = () => {
               <option value="paragraph">Paragraph</option>
               <option value="bullet">Bullet Points</option>
               <option value="table">Table</option>
+              <option value="report">Report</option>
+              <option value="work_order">Work Order</option>
+              <option value="checklist">Checklist</option>
             </select>
-            <input 
-              type="text" 
-              className="input" 
-              placeholder="Ask anything about your assets..." 
-              value={input} 
+            <input
+              type="text"
+              className="input"
+              placeholder="Ask anything about your assets..."
+              value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSend()}
               style={{ flex: 1 }}
             />
-            <button className="btn btn-primary" onClick={handleSend} disabled={loading}>
-              {loading ? <div className="spinner"></div> : 'Send'}
-            </button>
+            {loading ? (
+              <button className="btn btn-secondary" onClick={handleStop} title="Stop generating">Stop</button>
+            ) : (
+              <button className="btn btn-primary" onClick={handleSend}>Send</button>
+            )}
           </div>
         </div>
       </div>
@@ -144,13 +202,20 @@ export const ChatPanel: React.FC = () => {
       <aside className="chat-citations">
         <h3 className="chat-citations-title">Evidence Citations</h3>
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          {history[history.length - 1]?.role === 'ai' && history[history.length - 1].citations && history[history.length - 1].citations!.length > 0 ? (
-            history[history.length - 1].citations!.map((c, i) => (
-              <div key={i} className="citation-item">
-                <div className="citation-filename">{c.filename} {c.page ? `(p. ${c.page})` : ''}</div>
-                <div className="citation-text">"{c.textSnippet}"</div>
-              </div>
-            ))
+          {last?.role === 'ai' && last.citations && last.citations.length > 0 ? (
+            last.citations.map((c, i) => {
+              const uncited = c.cited === false && !last.streaming && last.mode !== 'stopped';
+              return (
+                <div key={i} className="citation-item" style={uncited ? { opacity: 0.55 } : undefined}>
+                  <div className="citation-filename">
+                    {c.label && <strong>[{c.label}] </strong>}
+                    {c.filename} {c.page ? `(p. ${c.page})` : ''}
+                    {uncited && <span className="text-xs text-muted"> · not cited</span>}
+                  </div>
+                  <div className="citation-text">"{c.textSnippet}"</div>
+                </div>
+              );
+            })
           ) : (
             <div className="citation-empty">No citations for current response.</div>
           )}
