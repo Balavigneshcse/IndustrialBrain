@@ -8,7 +8,21 @@
 4. Python 3.11 or 3.12. During installation, enable **Add Python to PATH**.
 5. Tesseract OCR and Poppler on Windows, only if a natively running worker must OCR scanned PDFs or images. The Docker worker image already includes them.
 
-The model-training phases also use WSL2 (Ubuntu) and Ollama; see [upgrade-plan.md](upgrade-plan.md).
+6. Ollama for Windows (https://ollama.com/download), which serves the language model on the GPU.
+
+The model-training phase also uses WSL2 (Ubuntu); see [upgrade-plan.md](upgrade-plan.md).
+
+## Language model
+
+The answers are written by Qwen3-4B-Instruct-2507 (about 2.5 GB, 4-bit), served by Ollama on the GPU. Download it once:
+
+```powershell
+ollama pull qwen3:4b-instruct-2507-q4_K_M
+```
+
+`scripts\start-ollama.ps1` (also run by `start-all.ps1`) starts Ollama with the settings tuned for a 4 GB GPU and loads the model. The settings are flash attention, a q8 KV cache, 2 parallel answers, and the model kept in memory. The script then reports how much of the model is on the GPU, which should be 100%. These settings apply only to the Ollama process the script starts. If Ollama is already running (for example from its tray icon), it is reused with whatever settings it has; quit it first to use the tuned ones.
+
+Without Ollama, the API still works: answers show the top evidence and say "LLM offline". Set `LLM_ENABLED=false` to turn generation off deliberately.
 
 ## Retrieval models
 
@@ -34,7 +48,7 @@ This does the following:
 5. applies database migrations and creates the demo accounts
 6. runs the tests
 
-`scripts\start-all.ps1` then starts the API, the **worker** and the web UI.
+`scripts\start-all.ps1` then starts Ollama, the API, the **worker** and the web UI. `scripts\stop-all.ps1` stops them, including Ollama if the script started it, which frees the GPU.
 
 ## Manual startup
 
@@ -74,7 +88,7 @@ Without Redis (`REDIS_URL` unset) or with `CELERY_EAGER=true`, uploads are proce
 docker compose --profile full up -d --build
 ```
 
-This runs the API and the worker from one image, alongside the database and Redis:
+This runs the API and the worker from one image, alongside the database and Redis. Ollama stays native on Windows (start it with `scripts\start-ollama.ps1`), and the containers reach it at `host.docker.internal:11434`.
 - Tesseract and Poppler are included in the image.
 - Both containers run as a non-root user.
 - The API applies migrations on start.
@@ -103,3 +117,4 @@ Settings come from `.env` (see `.env.example`) and environment variables, which 
 - FastAPI: `8000`
 - PostgreSQL (container): `127.0.0.1:5433`. 5432 is often taken by a local PostgreSQL install.
 - Redis (container): `127.0.0.1:6379`
+- Ollama (native): `127.0.0.1:11434`

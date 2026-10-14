@@ -356,6 +356,31 @@ Answer quality did not change: Phase 0 removed broken and dishonest behaviour, a
 - **Follow-up questions:** the last 3 turns are kept, and a short query-rewrite call turns follow-ups like "more details" into standalone questions.
 - **Degraded mode:** if Ollama is down, answers are clearly labeled "LLM offline: showing top evidence".
 
+**✅ Done 2026-10-14.** What was built:
+- **Ollama client** (`server/app/llm/client.py`):
+  - async httpx, 3 s connect and 120 s per-chunk timeouts, one retry (never after streaming has started)
+  - a circuit breaker: 3 failures, then 30 s cool-down
+  - a first-come-first-served gate of 2 slots with queue positions, returning `429` beyond 16 waiting
+  - Prometheus metrics for calls, latency, tokens, the queue and the breaker
+- **Ollama setup:** `scripts/start-ollama.ps1` starts Ollama with the §2.2 settings for its own process only, nothing system-wide. It then loads the model with the API's exact options and reports the GPU share (100%). `start-all` and `stop-all` include it, and `stop-all` frees the GPU.
+- **Versioned prompts** (`server/app/llm/prompts/*.vN.md`, the id is logged with every answer): `answer.v2`, `rewrite.v1`, `work_order.v1`, `checklist.v1`, `rca.v2`. Sources are numbered `<source>` blocks within a token budget, with injection-capable markup neutralized. A one-line rule reminder follows the question.
+- **Streaming:** `POST /chat/stream` (SSE: status/queued, sources, token, done, error). Closing the connection stops generation on the GPU (verified: Ollama logs `cancel task`), and the partial answer is logged as `stopped`. `POST /chat/query` returns the same pipeline's final answer as JSON.
+- **Structured outputs:** work orders, checklists and the RCA brief use Ollama's JSON-schema `format`. They are validated with Pydantic, retried once at temperature 0, then fall back to extractive. RCA briefs are cached for 15 minutes, so the DOCX export is the brief that was just shown.
+- **Checks after generation:** invalid `[S#]` are removed; numbers are checked against all sources and the cited ones; uncited factual sentences are listed. Results go in `grounding` and `warnings`.
+- **Evidence strength** (high/medium/low) replaces the confidence percentage. `confidence` remains as a deprecated field: the relevance of the best cited source.
+- **Follow-ups:** the last 3 exchanges; a 80-token rewrite call at temperature 0, only when the question looks like a follow-up.
+- **Degraded mode:** extractive answers with `notice: "LLM offline: showing top evidence."`. Readiness has an optional `llm` check: if it fails, status is `degraded` but HTTP 200.
+- **Query log:** standalone question, model, prompt version, evidence strength, grounding report and token counts (migration `7af646d6c7f0`).
+- **UI (interim, until Phase 4):** streamed answers with a Stop button, queue position, evidence-strength badge, notices and warnings, `[S#]` labels with uncited sources dimmed, and Work order / Checklist / Report formats. The RCA page shows strength and model.
+- **Differences from the bullets above:**
+  - Deterministic generation (temperature 0.1, seed 42) was added, so the same question over the same evidence gets the same answer.
+  - The gate is per API process (run one API process per GPU).
+  - The UI shows queue position only while waiting.
+- **Results:**
+  - 106 tests pass; a fake Ollama transport means no GPU is needed.
+  - Benchmark `eval/reports/2026-10-14-after-phase3.md`: answer facts **10/10** (was 8/10), refusals **3/3** (was 2/3), no false refusals, no ungrounded numbers or invalid citations, median 2.6 s and slowest 8.4 s.
+  - Also verified with the real model: 3 concurrent streams (the third queued at position 1), first token 2.5–3.7 s, follow-up rewriting, work order, checklist, table, RCA (about 20 s) and its cached DOCX export, and the API container reaching the host GPU via `host.docker.internal`.
+
 ### Phase 4: New professional frontend (complete rebuild)
 The current UI is **replaced, not patched**. A new `frontend/` is built from scratch against the `/api/v1` contract. The old one stays in git history. Until the new UI ships, the server keeps the old `/api/...` routes as a hidden alias so the current UI keeps working.
 

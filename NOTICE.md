@@ -1,8 +1,8 @@
 # Third-party software notice
 
-IndusMind AI uses open-source software distributed under their respective licenses, including PostgreSQL, pgvector, Redis, Celery, React, Vite, FastAPI, Uvicorn, Pydantic, SQLAlchemy, asyncpg, Alembic, argon2-cffi, PyJWT, structlog, prometheus-fastapi-instrumentator, fastembed, ONNX Runtime, Tesseract OCR, Poppler, PyPDF, python-docx, python-pptx, pandas, openpyxl, Beautiful Soup, pytesseract and pdf2image.
+IndusMind AI uses open-source software distributed under their respective licenses, including PostgreSQL, pgvector, Redis, Celery, Ollama, HTTPX, React, Vite, FastAPI, Uvicorn, Pydantic, SQLAlchemy, asyncpg, Alembic, argon2-cffi, PyJWT, structlog, prometheus-fastapi-instrumentator, fastembed, ONNX Runtime, Tesseract OCR, Poppler, PyPDF, python-docx, python-pptx, pandas, openpyxl, Beautiful Soup, pytesseract and pdf2image.
 
-The retrieval models used at runtime are BAAI/bge-small-en-v1.5 (MIT) and cross-encoder ms-marco-MiniLM-L-6-v2 (Apache-2.0, ONNX export by Xenova).
+The retrieval models used at runtime are BAAI/bge-small-en-v1.5 (MIT) and cross-encoder ms-marco-MiniLM-L-6-v2 (Apache-2.0, ONNX export by Xenova). The answer model is Qwen3-4B-Instruct-2507 (Apache-2.0, Alibaba Qwen team), run from the Q4_K_M build in the Ollama library; it is downloaded by the user and not redistributed here.
 
 Models and datasets downloaded for the upgrade plan (Qwen3, BGE embedding and reranker models, glaiveai/RAG-v1, neural-bridge/rag-dataset-12000, SQuAD v2, AI4I 2020) keep their own licenses. These are listed in [docs/upgrade-plan.md](docs/upgrade-plan.md) §5.1 and §7, and are not redistributed in this repository.
 

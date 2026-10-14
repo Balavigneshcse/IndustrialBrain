@@ -60,6 +60,35 @@ The retrieval models are missing from `data/models/fastembed`. Run `wsl -d Ubunt
 
 If the folder exists but Windows cannot read the files (OSError), they are WSL symlinks from an older download. Re-run the script: it now replaces the symlinks with real files.
 
+## Answers say "LLM offline: showing top evidence"
+
+The API cannot reach Ollama, or the circuit breaker opened after 3 failed calls. It retries 30 s later. Check:
+1. `/api/v1/health/ready` → the `llm` check gives the reason (unreachable, or model not installed).
+2. Start Ollama with `scripts\start-ollama.ps1`. If the model is missing, run `ollama pull qwen3:4b-instruct-2507-q4_K_M`.
+3. Ollama's own log is `data\run\ollama.log` when the script started it.
+
+## Answers are slow (well over 10 s)
+
+Part of the model is probably on the CPU. `scripts\start-ollama.ps1` reports the GPU share, and readiness shows it too ("…% on the GPU"):
+- Close GPU-heavy apps (games, video editors, browsers with hardware acceleration), then run the script again.
+- If Ollama was started from its tray icon, it runs without the tuned settings: quit it and use the script.
+- The API sends `num_gpu 99` (all layers on the GPU) and the same 4,096-token context in every call. Changing `LLM_NUM_CTX` makes Ollama reload the model.
+
+With 2 answers already being written, a third waits: the chat shows "Waiting for the model". More than 16 waiting returns `429`.
+
+## The GPU is busy, or training cannot start
+
+Ollama keeps the model in GPU memory (about 3 GB). Run `scripts\stop-all.ps1` (it stops Ollama if the scripts started it), or quit Ollama from its tray icon, before training.
+
+## An answer has warnings
+
+The checks after generation flag:
+- numbers not found in any source
+- citations to sources that do not exist (these are removed)
+- statements without a citation
+
+Such answers get evidence strength **Low**. Verify those statements against the cited source before using them.
+
 ## Search found nothing for an older document
 
 Documents indexed before Phase 2 used the old hashed vectors. Run `.\.venv\Scripts\python.exe -m server.app.cli reindex` once.
