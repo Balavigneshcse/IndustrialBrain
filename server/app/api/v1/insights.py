@@ -9,8 +9,9 @@ from ...db.models import Asset, Document, QueryLog
 from ...schemas.common import ERROR_RESPONSES, Problem
 from ...schemas.insights import (ActionCount, AnalyticsOut, AssetEventOut, AssetOut, AssetRisk, DashboardOut,
                                  FailureCount, RcaOut, RecentQuery, TimelineEvent)
+from ...llm.client import get_llm
 from ...services import audit, store
-from ...services.answers import generate_rca
+from ...services.rca import build_rca
 from ...services.rca_docx import build_rca_docx
 from ..deps import CurrentUser, EngineerUser, SessionDep
 
@@ -59,19 +60,20 @@ async def get_asset(session: SessionDep, _: CurrentUser, tag: str = AssetTag) ->
     )
 
 
-@router.post("/rca/{tag}", response_model=RcaOut, responses={403: ERROR_RESPONSES[403]})
+@router.post("/rca/{tag}", response_model=RcaOut, responses={403: ERROR_RESPONSES[403], 429: ERROR_RESPONSES[429]})
 async def create_rca(session: SessionDep, _: EngineerUser, tag: str = AssetTag) -> RcaOut:
-    evidence = await store.asset_evidence(session, tag)
-    return RcaOut(**await run_in_threadpool(generate_rca, tag, evidence))
+    """RCA brief drafted by the language model from the asset's most relevant evidence (about 15-30 s),
+    or the extractive brief when the model is offline (`mode`, `notice`)."""
+    return RcaOut(**await build_rca(session, tag))
 
 
 @router.get("/rca/export/{tag}", response_class=Response, responses={
     200: {"content": {"application/vnd.openxmlformats-officedocument.wordprocessingml.document": {}},
           "description": "RCA brief as a Word document"},
-    403: ERROR_RESPONSES[403]})
+    403: ERROR_RESPONSES[403], 429: ERROR_RESPONSES[429]})
 async def export_rca(request: Request, session: SessionDep, user: EngineerUser, tag: str = AssetTag) -> Response:
-    evidence = await store.asset_evidence(session, tag)
-    rca = await run_in_threadpool(generate_rca, tag, evidence)
+    """The brief from POST /rca/{tag} (cached for 15 minutes) as a Word document."""
+    rca = await build_rca(session, tag)
     content = await run_in_threadpool(build_rca_docx, rca)
     audit.record(session, "rca_exported", user=user, request=request, target_type="asset", target_id=rca["assetTag"])
     await session.commit()
@@ -121,9 +123,10 @@ async def dashboard(session: SessionDep, _: CurrentUser) -> DashboardOut:
     queries = (await session.execute(select(func.count(QueryLog.id)))).scalar_one()
     tags = sorted(await store.known_asset_tags(session) | set((await session.execute(select(Asset.tag))).scalars()))
     recent = (await session.execute(select(QueryLog).order_by(QueryLog.id.desc()).limit(5))).scalars()
+    llm = await get_llm().status(max_age=15)
     return DashboardOut(
         documents=documents, readyDocuments=ready, assets=len(tags), queries=queries, assetTags=tags,
-        aiOnline=True,  # the evidence index lives in the database this request just used
+        aiOnline=llm["state"] == "ok", llmStatus=llm["detail"],
         recentQueries=[RecentQuery(id=q.id, question=q.question, mode=q.mode, confidence=q.confidence,
                                    createdAt=q.created_at) for q in recent],
     )

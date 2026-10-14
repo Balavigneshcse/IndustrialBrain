@@ -108,6 +108,14 @@ class QueryLog(Base):
     latency_ms: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     retrieved_chunk_ids: Mapped[list[int]] = mapped_column(ARRAY(BigInteger), server_default="{}")
     feedback: Mapped[int | None] = mapped_column(SmallInteger)
+    # Generation details (Phase 3): what produced the answer, and how well it is grounded.
+    standalone_question: Mapped[str | None] = mapped_column(Text)
+    model: Mapped[str | None] = mapped_column(String(128))
+    prompt_version: Mapped[str | None] = mapped_column(String(32))
+    evidence_strength: Mapped[str | None] = mapped_column(String(8))
+    grounding: Mapped[dict | None] = mapped_column(JSONB)
+    prompt_tokens: Mapped[int | None] = mapped_column(Integer)
+    completion_tokens: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
 
 

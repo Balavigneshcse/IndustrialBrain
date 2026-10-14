@@ -19,6 +19,7 @@ os.environ.update({
     "CHAT_RATE_PER_MINUTE": "1000",
     "UPLOAD_RATE_PER_MINUTE": "1000",
     "REDIS_URL": "",  # no broker: documents are processed inline, rate limits stay in memory
+    "LLM_ENABLED": "false",  # extractive answers; test_llm.py installs a fake Ollama where it needs one
 })
 
 from sqlalchemy import text  # noqa: E402

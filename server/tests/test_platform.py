@@ -29,8 +29,13 @@ def test_health_endpoints(client):
     assert ready.status_code == 200
     checks = ready.json()["checks"]
     assert {name: check["status"] for name, check in checks.items()} == {
-        "database": "ok", "pgvector": "ok", "uploads": "ok", "models": "ok", "redis": "ok", "worker": "ok"}
+        "database": "ok", "pgvector": "ok", "uploads": "ok", "models": "ok", "redis": "ok", "worker": "ok", "llm": "ok"}
     assert "inline" in checks["worker"]["detail"]  # tests run without Redis
+    assert "LLM_ENABLED=false" in checks["llm"]["detail"]  # and without the language model
+
+
+def test_metrics_include_language_model_calls(client):
+    assert "indusmind_llm_calls_total" in client.get("/metrics").text
 
 
 def test_metrics_are_exposed(client):

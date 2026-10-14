@@ -62,6 +62,25 @@ class Settings(BaseSettings):
     # "motor current") is left to the language model in Phase 3. See eval/README.md.
     min_evidence_score: float = 0.005
 
+    # Answer generation (Ollama on the host GPU). If Ollama is unreachable, answers fall back to the
+    # extractive evidence summary and say so. Keep num_ctx/num_gpu identical in every request: a
+    # different value makes Ollama reload the model.
+    llm_enabled: bool = True
+    ollama_url: str = "http://127.0.0.1:11434"
+    llm_model: str = "qwen3:4b-instruct-2507-q4_K_M"
+    llm_num_ctx: int = 4096
+    llm_num_gpu: int = 99            # all layers on the GPU (automatic placement left a third on the CPU)
+    llm_keep_alive: int = -1         # seconds the model stays loaded after a call; negative = always
+    llm_temperature: float = 0.1
+    llm_seed: int | None = 42        # fixed: the same question over the same evidence gets the same answer
+    llm_max_answer_tokens: int = 600
+    llm_context_chunks: int = 6      # sources given to the model (and returned as citations)
+    llm_concurrency: int = 2         # match OLLAMA_NUM_PARALLEL
+    llm_max_queue: int = 16          # questions waiting for a slot before the API answers 429
+    llm_timeout_seconds: float = 120.0
+    llm_breaker_failures: int = 3    # consecutive failures that open the circuit breaker
+    llm_breaker_cooldown_seconds: float = 30.0
+
     log_json: bool = True
 
     @property

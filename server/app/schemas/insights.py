@@ -2,7 +2,9 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from .chat import GroundingOut
 
 
 class TimelineEvent(BaseModel):
@@ -58,6 +60,8 @@ class AssetImportResult(BaseModel):
 
 
 class RcaCitation(BaseModel):
+    label: str = ""   # "S1": the marker used in the brief
+    cited: bool = False
     source: str
     page: int
     excerpt: str
@@ -73,7 +77,13 @@ class RcaOut(BaseModel):
     eventDates: list[str]
     recommendedInvestigation: list[str]
     preventiveActions: list[str]
-    confidence: float
+    mode: Literal["llm", "extractive"] = "extractive"
+    evidenceStrength: Literal["high", "medium", "low"] | None = None
+    notice: str | None = None
+    warnings: list[str] = []
+    grounding: GroundingOut | None = None
+    model: str | None = None
+    confidence: float = Field(description="Deprecated: reranker relevance of the best evidence. Use evidenceStrength.")
     disclaimer: str
     citations: list[RcaCitation]
 
@@ -117,5 +127,6 @@ class DashboardOut(BaseModel):
     assets: int
     queries: int
     assetTags: list[str]
-    aiOnline: bool
+    aiOnline: bool          # the language model is reachable (answers are generated, not extractive)
+    llmStatus: str = ""
     recentQueries: list[RecentQuery]

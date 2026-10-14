@@ -9,12 +9,15 @@ from sqlalchemy import text
 
 from ...core.config import get_settings
 from ...db.session import get_sessionmaker
+from ...llm.client import get_llm
 from ...schemas.common import HealthCheck, HealthLegacy, HealthReady
 from ...services.models import models_ready
 from ...workers.celery_app import HEARTBEAT_KEY
 
 router = APIRouter(prefix="/health", tags=["health"])
 VERSION = "3.0.0"
+# Without these the API still works, in a reduced mode: status "degraded", but HTTP 200.
+OPTIONAL_CHECKS = {"llm"}
 
 
 @router.get("", response_model=HealthLegacy)
@@ -30,8 +33,9 @@ async def live() -> HealthLegacy:
 
 @router.get("/ready", response_model=HealthReady, responses={503: {"model": HealthReady}})
 async def ready():
-    """Dependencies are usable: database with pgvector, uploads, retrieval models, and (when REDIS_URL is
-    set) Redis and a live worker. 503 with per-check detail if not."""
+    """Dependencies are usable: database with pgvector, uploads, retrieval models, (when REDIS_URL is set)
+    Redis and a live worker, and the language model. 503 with per-check detail if a required check fails;
+    200 with status "degraded" if only the language model is unavailable (answers are then extractive)."""
     checks: dict[str, HealthCheck] = {}
     try:
         async with get_sessionmaker()() as session:
@@ -51,9 +55,11 @@ async def ready():
     models_ok, models_problem = await to_thread.run_sync(models_ready)
     checks["models"] = HealthCheck(status="ok" if models_ok else "error", detail=models_problem)
     checks.update(await to_thread.run_sync(_queue_checks, settings))
-    healthy = all(c.status == "ok" for c in checks.values())
-    body = HealthReady(status="ok" if healthy else "degraded", checks=checks)
-    return JSONResponse(body.model_dump(), status_code=200 if healthy else 503)
+    llm = await get_llm().status()
+    checks["llm"] = HealthCheck(status="ok" if llm["state"] in ("ok", "disabled") else "error", detail=llm["detail"])
+    required_ok = all(c.status == "ok" for name, c in checks.items() if name not in OPTIONAL_CHECKS)
+    body = HealthReady(status="ok" if all(c.status == "ok" for c in checks.values()) else "degraded", checks=checks)
+    return JSONResponse(body.model_dump(), status_code=200 if required_ok else 503)
 
 
 def _queue_checks(settings) -> dict[str, HealthCheck]:

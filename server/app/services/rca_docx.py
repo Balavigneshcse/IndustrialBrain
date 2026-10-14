@@ -12,7 +12,13 @@ def build_rca_docx(rca: dict) -> bytes:
     style.font.name = "Calibri"
 
     doc.add_heading(f"Root Cause Analysis — {rca['assetTag']}", level=0)
-    doc.add_paragraph(f"Heuristic confidence: {rca['confidence']:.0%}")
+    strength = (rca.get("evidenceStrength") or "low").capitalize()
+    origin = f"drafted by {rca['model']}" if rca.get("mode") == "llm" else "extractive summary of the evidence"
+    doc.add_paragraph(f"Evidence strength: {strength} ({origin})")
+    if rca.get("notice"):
+        doc.add_paragraph(rca["notice"])
+    for warning in rca.get("warnings") or []:
+        doc.add_paragraph(warning, style="List Bullet")
 
     doc.add_heading("Observed Problem", level=1)
     doc.add_paragraph(rca["observedProblem"])
@@ -41,7 +47,8 @@ def build_rca_docx(rca: dict) -> bytes:
         doc.add_heading("Evidence", level=1)
         for c in rca["citations"]:
             paragraph = doc.add_paragraph(style="List Bullet")
-            paragraph.add_run(f"{c['source']} (p. {c['page']}): ").bold = True
+            label = f"[{c['label']}] " if c.get("label") else ""
+            paragraph.add_run(f"{label}{c['source']} (p. {c['page']}): ").bold = True
             paragraph.add_run(c["excerpt"])
 
     doc.add_paragraph("")
